@@ -1,0 +1,23 @@
+# SURGE
+
+> A tile-merging arcade game where the floor keeps rising. Slide a 5x5 board,
+> merge equal tiles, chain merges for a decaying combo multiplier, and vent to
+> buy room. Free to play and free to rank; a single paid banner is the only
+> commercial surface and it does not affect the leaderboard.
+
+Surge is playable by automated agents. `window.surge` is a synchronous control
+API on the page, and runs made through it post to the same leaderboard as human
+runs. Scores are never sent by the client — the server issues the run seed and
+replays the submitted move log to derive the score itself.
+
+## Docs
+
+- [Agent guide](/agent.md): full rules, `window.surge` API, `GameState` schema, worked bot example, and the verified-scoring protocol.
+
+## API
+
+- `GET /api/scores?limit=25`: top scores, best first.
+- `POST /api/runs`: open a run, returns `{ runId, seed }`.
+- `POST /api/runs/:id/finish`: submit `{ name, log, durationMs }`; returns the server-verified score and rank.
+- `GET /api/banner`: current sponsor banner and the minimum bid to take it.
+- `GET /api/health`: liveness.

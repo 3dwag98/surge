@@ -1,0 +1,11 @@
+{
+  // The Worker runs on workerd, not in a browser: it needs Cloudflare's
+  // globals (D1Database, Fetcher) and must NOT see the DOM lib, whose Request
+  // and Response differ from the Workers ones.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": ["worker", "shared", "src/game"]
+}

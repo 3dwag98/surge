@@ -3,108 +3,215 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="The 2048 sliding tile game, with a leaderboard for your best runs." />
-    <meta name="color-scheme" content="light dark" />
-    <title>2048</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23edc22e'/><text x='16' y='22' font-family='sans-serif' font-size='13' font-weight='700' text-anchor='middle' fill='%23f9f6f2'>2048</text></svg>" />
-    <link rel="stylesheet" href="styles.css" />
+    <title>SURGE — merge fast, the floor is rising</title>
+    <meta
+      name="description"
+      content="Surge is a tile-merging arcade game where the floor keeps rising. Chain merges for the multiplier, vent to buy room, and put your score on the public board. Free to play, free to rank."
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#080b16" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2308f7d4'/><path d='M9 20l7-9 7 9z' fill='%23081018'/></svg>"
+    />
   </head>
   <body>
-    <div class="page">
-      <header class="masthead">
-        <div class="title-block">
-          <h1>2048</h1>
-          <p class="tagline">Join the tiles, get to <strong>2048</strong>.</p>
-        </div>
-        <div class="score-blocks">
-          <div class="score-block">
-            <span class="score-label">Score</span>
-            <span class="score-value" id="score">0</span>
-            <span class="score-addition" id="score-addition" aria-hidden="true"></span>
-          </div>
-          <div class="score-block">
-            <span class="score-label">Best</span>
-            <span class="score-value" id="best">0</span>
-          </div>
-        </div>
-      </header>
+    <div class="grain" aria-hidden="true"></div>
 
-      <div class="toolbar">
-        <p class="hint">
-          <span class="hint-desktop">Use the arrow keys or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>.</span>
-          <span class="hint-touch">Swipe to move the tiles.</span>
-        </p>
-        <button type="button" class="button button-primary" id="new-game">New game</button>
+    <!-- ---------------------------------------------------------- banner -->
+    <aside class="banner" aria-label="Sponsored banner">
+      <div class="banner-slot" id="banner-slot" hidden>
+        <a class="banner-link" id="banner-link" href="#">
+          <span class="banner-tag">AD</span>
+          <span class="banner-copy" id="banner-text"></span>
+          <span class="banner-go" aria-hidden="true">↗</span>
+        </a>
+        <span class="banner-meta">
+          held by <strong id="banner-holder"></strong> for <strong id="banner-amount"></strong>
+        </span>
       </div>
 
-      <main class="board-area">
-        <div class="board" id="board">
-          <div class="grid" id="grid" aria-hidden="true"></div>
-          <div class="tiles" id="tiles" aria-hidden="true"></div>
+      <p class="banner-empty" id="banner-empty">
+        <span class="banner-tag">AD</span>
+        This space is for sale. Nobody holds it yet.
+      </p>
+
+      <button type="button" class="btn btn-ghost banner-claim" id="banner-claim" hidden>
+        Claim this space
+      </button>
+    </aside>
+
+    <header class="masthead">
+      <div class="brand">
+        <h1>SURGE</h1>
+        <p class="tagline">The floor is rising. Merge faster.</p>
+      </div>
+      <nav class="masthead-actions">
+        <button type="button" class="btn btn-ghost" id="how-to">How to play</button>
+        <a class="btn btn-ghost" href="/agent.md" target="_blank" rel="noopener">Agent API</a>
+        <button type="button" class="btn btn-primary" id="new-game">New run</button>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <!-- ------------------------------------------------------- the game -->
+      <section class="stage" aria-label="Game">
+        <div class="hud">
+          <div class="stat">
+            <span class="stat-label">Score</span>
+            <span class="stat-value" id="score">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Best</span>
+            <span class="stat-value" id="best">0</span>
+          </div>
+          <div class="stat stat-combo">
+            <span class="stat-label">Combo</span>
+            <span class="stat-value" id="combo">1x</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Level</span>
+            <span class="stat-value" id="level">0</span>
+          </div>
+        </div>
+
+        <div class="board-wrap">
+          <canvas id="board" width="520" height="560" aria-label="Surge game board"></canvas>
 
           <div class="overlay" id="overlay" hidden>
             <div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
-              <h2 class="overlay-title" id="overlay-title">Game over</h2>
-              <p class="overlay-message" id="overlay-message"></p>
+              <h2 id="overlay-title">Buried</h2>
+              <p class="overlay-stats" id="overlay-stats"></p>
 
               <form class="save-form" id="save-form" hidden>
-                <label class="save-label" id="save-label" for="player-name">Add your run to the leaderboard</label>
+                <label for="player-name">Put it on the board</label>
                 <div class="save-row">
                   <input
                     type="text"
                     id="player-name"
                     name="name"
-                    maxlength="16"
+                    maxlength="18"
+                    placeholder="your handle"
                     autocomplete="nickname"
-                    placeholder="Your name"
                     spellcheck="false"
                   />
-                  <button type="submit" class="button button-primary" id="save-score">Save</button>
+                  <button type="submit" class="btn btn-primary" id="save-score">Post</button>
                 </div>
                 <p class="save-status" id="save-status" role="status"></p>
               </form>
 
-              <div class="overlay-actions">
-                <button type="button" class="button" id="keep-going" hidden>Keep going</button>
-                <button type="button" class="button button-primary" id="play-again">Play again</button>
+              <button type="button" class="btn btn-primary" id="play-again">Run it back</button>
+            </div>
+          </div>
+
+          <!-- ---------------------------------------------------- tutorial -->
+          <div class="tutorial" id="tutorial" hidden>
+            <div class="tutorial-card" role="dialog" aria-labelledby="tutorial-title">
+              <div class="tutorial-progress" id="tutorial-progress" aria-hidden="true"></div>
+              <h2 class="tutorial-title" id="tutorial-title"></h2>
+              <p class="tutorial-body" id="tutorial-body"></p>
+              <div class="tutorial-keys" id="tutorial-keys" hidden></div>
+              <div class="tutorial-actions">
+                <button type="button" class="btn btn-ghost" id="tutorial-skip">Skip tutorial</button>
+                <button type="button" class="btn btn-primary" id="tutorial-next">Next</button>
               </div>
             </div>
           </div>
         </div>
-        <p class="visually-hidden" id="board-status" role="status" aria-live="polite"></p>
-      </main>
 
-      <section class="leaderboard" aria-labelledby="leaderboard-title">
-        <header class="leaderboard-head">
+        <div class="controls">
+          <button type="button" class="btn btn-vent" id="vent" disabled>
+            <span class="vent-fill" aria-hidden="true"></span>
+            <span class="vent-label">Vent <kbd>Space</kbd></span>
+          </button>
+          <p class="controls-hint">
+            <span class="hint-desktop"><kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> or <kbd>WASD</kbd> to slide</span>
+            <span class="hint-touch">Swipe to slide</span>
+          </p>
+        </div>
+
+        <p class="visually-hidden" id="board-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <!-- ------------------------------------------------------ leaderboard -->
+      <section class="board-panel" aria-labelledby="leaderboard-title">
+        <header class="panel-head">
           <h2 id="leaderboard-title">Leaderboard</h2>
-          <span class="badge" id="leaderboard-source" title="Where these scores are stored">…</span>
+          <span class="panel-note">free to enter · verified server-side</span>
         </header>
 
-        <table class="leaderboard-table" id="leaderboard-table" hidden>
+        <table class="leaderboard" id="leaderboard-table" hidden>
           <thead>
             <tr>
               <th scope="col" class="col-rank">#</th>
               <th scope="col" class="col-name">Player</th>
               <th scope="col" class="col-score">Score</th>
-              <th scope="col" class="col-tile">Best tile</th>
+              <th scope="col" class="col-level">Lvl</th>
+              <th scope="col" class="col-tile">Best</th>
               <th scope="col" class="col-when">When</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body"></tbody>
         </table>
 
-        <p class="leaderboard-empty" id="leaderboard-empty">No runs recorded yet — play a game to open the board.</p>
+        <p class="panel-empty" id="leaderboard-empty">No runs posted yet. Be the first.</p>
+        <p class="panel-status" id="leaderboard-status" role="status"></p>
 
-        <footer class="leaderboard-foot">
-          <button type="button" class="button button-quiet" id="clear-scores" hidden>Clear local scores</button>
+        <footer class="panel-foot">
+          <p>
+            Scores are replayed on the server from your move log before they count, so the number on
+            the board is one the engine actually produced.
+          </p>
         </footer>
       </section>
+    </main>
 
-      <footer class="colophon">
-        <p>Merge two tiles of the same number to add them together. The run ends when the board is full and nothing can move.</p>
-      </footer>
-    </div>
+    <footer class="colophon">
+      <p>
+        Merge equal tiles to double them. Every merge extends your combo window and charges the vent.
+        The floor rises on a timer that never stops tightening — anything left in the top row when it
+        does is gone.
+      </p>
+    </footer>
 
-    <script type="module" src="src/main.js"></script>
+    <!-- ------------------------------------------------------ claim dialog -->
+    <dialog class="dialog" id="banner-dialog">
+      <form method="dialog" class="dialog-form" id="banner-form">
+        <header class="dialog-head">
+          <h2>Take the banner</h2>
+          <button type="button" class="dialog-close" id="banner-close" aria-label="Close">×</button>
+        </header>
+
+        <p class="dialog-note" id="banner-minimum"></p>
+
+        <label for="banner-input-text">Banner text</label>
+        <input id="banner-input-text" name="text" type="text" maxlength="80" placeholder="Your one line" required />
+
+        <label for="banner-input-url">Link (https)</label>
+        <input id="banner-input-url" name="url" type="url" maxlength="300" placeholder="https://example.com" required />
+
+        <label for="banner-input-name">Your name</label>
+        <input id="banner-input-name" name="name" type="text" maxlength="18" placeholder="who to credit" />
+
+        <label for="banner-input-amount">Bid (USD)</label>
+        <input id="banner-input-amount" name="amount" type="number" step="0.01" min="1" required />
+
+        <div class="paypal-mount" id="paypal-buttons"></div>
+        <p class="dialog-status" id="banner-status" role="status"></p>
+
+        <p class="dialog-fineprint">
+          Highest bid holds the slot until someone pays more. Links open in a new tab and are marked
+          <code>sponsored</code>. Nothing here affects the leaderboard.
+        </p>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
