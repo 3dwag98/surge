@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="The 2048 sliding tile game, with a leaderboard for your best runs." />
+    <meta name="color-scheme" content="light dark" />
+    <title>2048</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23edc22e'/><text x='16' y='22' font-family='sans-serif' font-size='13' font-weight='700' text-anchor='middle' fill='%23f9f6f2'>2048</text></svg>" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <div class="title-block">
+          <h1>2048</h1>
+          <p class="tagline">Join the tiles, get to <strong>2048</strong>.</p>
+        </div>
+        <div class="score-blocks">
+          <div class="score-block">
+            <span class="score-label">Score</span>
+            <span class="score-value" id="score">0</span>
+            <span class="score-addition" id="score-addition" aria-hidden="true"></span>
+          </div>
+          <div class="score-block">
+            <span class="score-label">Best</span>
+            <span class="score-value" id="best">0</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <p class="hint">
+          <span class="hint-desktop">Use the arrow keys or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>.</span>
+          <span class="hint-touch">Swipe to move the tiles.</span>
+        </p>
+        <button type="button" class="button button-primary" id="new-game">New game</button>
+      </div>
+
+      <main class="board-area">
+        <div class="board" id="board">
+          <div class="grid" id="grid" aria-hidden="true"></div>
+          <div class="tiles" id="tiles" aria-hidden="true"></div>
+
+          <div class="overlay" id="overlay" hidden>
+            <div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+              <h2 class="overlay-title" id="overlay-title">Game over</h2>
+              <p class="overlay-message" id="overlay-message"></p>
+
+              <form class="save-form" id="save-form" hidden>
+                <label class="save-label" id="save-label" for="player-name">Add your run to the leaderboard</label>
+                <div class="save-row">
+                  <input
+                    type="text"
+                    id="player-name"
+                    name="name"
+                    maxlength="16"
+                    autocomplete="nickname"
+                    placeholder="Your name"
+                    spellcheck="false"
+                  />
+                  <button type="submit" class="button button-primary" id="save-score">Save</button>
+                </div>
+                <p class="save-status" id="save-status" role="status"></p>
+              </form>
+
+              <div class="overlay-actions">
+                <button type="button" class="button" id="keep-going" hidden>Keep going</button>
+                <button type="button" class="button button-primary" id="play-again">Play again</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="visually-hidden" id="board-status" role="status" aria-live="polite"></p>
+      </main>
+
+      <section class="leaderboard" aria-labelledby="leaderboard-title">
+        <header class="leaderboard-head">
+          <h2 id="leaderboard-title">Leaderboard</h2>
+          <span class="badge" id="leaderboard-source" title="Where these scores are stored">…</span>
+        </header>
+
+        <table class="leaderboard-table" id="leaderboard-table" hidden>
+          <thead>
+            <tr>
+              <th scope="col" class="col-rank">#</th>
+              <th scope="col" class="col-name">Player</th>
+              <th scope="col" class="col-score">Score</th>
+              <th scope="col" class="col-tile">Best tile</th>
+              <th scope="col" class="col-when">When</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+
+        <p class="leaderboard-empty" id="leaderboard-empty">No runs recorded yet — play a game to open the board.</p>
+
+        <footer class="leaderboard-foot">
+          <button type="button" class="button button-quiet" id="clear-scores" hidden>Clear local scores</button>
+        </footer>
+      </section>
+
+      <footer class="colophon">
+        <p>Merge two tiles of the same number to add them together. The run ends when the board is full and nothing can move.</p>
+      </footer>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

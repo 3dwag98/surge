@@ -1,0 +1,17 @@
+{
+  "name": "2048",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The 2048 sliding tile game with a persistent leaderboard.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
