@@ -1,15 +1,18 @@
 /**
  * Cloudflare Worker: the API behind Surge.
  *
- * Two jobs.
+ * Three jobs.
  *
- * 1. The leaderboard. It issues the seed a run is played with, then replays the
- *    submitted move log against that seed to derive the score itself. Clients
- *    never send a score, so there is no number to tamper with.
+ * 1. The high-score board. It issues the seed a run is played with, then
+ *    replays the submitted move log against that seed to derive the score
+ *    itself. Clients never send a score, so there is no number to tamper with.
  *
- * 2. The banner. One slot, held by the highest bidder. A claim becomes live the
- *    instant PayPal confirms the money cleared — verified by capturing
- *    server-side, never by trusting the browser's word for it.
+ * 2. The paid board. An auction with no losers: any bid at or above the entry
+ *    price seats you, ranked by what you paid. A claim goes live the instant
+ *    PayPal confirms the money cleared — verified by capturing server-side,
+ *    never by trusting the browser's word for it.
+ *
+ * 3. The side slots, which money cannot touch. Those go to the top scores.
  *
  * Static assets are served by the ASSETS binding, so this Worker sits in front
  * of the built client and only handles /api.
@@ -19,14 +22,22 @@ import { Hono } from 'hono';
 
 import { replayEncoded } from '../shared/replay.js';
 import {
+  BOARD_LIMIT,
   LEADERBOARD_LIMIT,
   ValidationError,
-  minimumClaimCents,
+  assertBidCents,
+  entryCents,
   parseUsdToCents,
+  rankListings,
   rankScores,
-  sanitizeBannerText,
-  sanitizeBannerUrl,
+  sanitizeListingTagline,
+  sanitizeListingTitle,
+  sanitizeListingUrl,
   sanitizeName,
+  sanitizeOptionalUrl,
+  sideSlots,
+  topSpotCents,
+  type Listing,
   type ScoreRow,
 } from '../shared/rules.js';
 import { PayPalClient, PayPalError, readPayPalConfig } from './paypal.js';
@@ -47,6 +58,9 @@ const RUN_TTL_MS = 3 * 60 * 60 * 1000;
 const RUN_RATE_LIMIT = 60;
 const RUN_RATE_WINDOW_MS = 10 * 60 * 1000;
 const MAX_LOG_BYTES = 96 * 1024;
+
+/** How deep to look when working out who holds a side slot. */
+const SIDE_SLOT_POOL = 60;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -74,22 +88,28 @@ function currencyOf(env: Env): string {
   return env.CURRENCY && /^[A-Z]{3}$/.test(env.CURRENCY) ? env.CURRENCY : 'USD';
 }
 
-/* ------------------------------------------------------------------ scores */
+const SCORE_COLUMNS = `id, name, score, level, best_tile AS bestTile, merges,
+                       duration_ms AS durationMs, created_at AS createdAt, url`;
 
-app.get('/api/scores', async (c) => {
-  const requested = Number(c.req.query('limit'));
-  const limit = Number.isInteger(requested) && requested > 0 ? Math.min(requested, 100) : LEADERBOARD_LIMIT;
-
-  const { results } = await c.env.DB.prepare(
-    `SELECT id, name, score, level, best_tile AS bestTile, merges, duration_ms AS durationMs,
-            created_at AS createdAt
+function topScores(env: Env, limit: number): Promise<D1Result<ScoreRow>> {
+  return env.DB.prepare(
+    `SELECT ${SCORE_COLUMNS}
        FROM scores
       ORDER BY score DESC, best_tile DESC, created_at ASC
       LIMIT ?1`,
   )
     .bind(limit)
     .all<ScoreRow>();
+}
 
+/* ------------------------------------------------------------------ scores */
+
+app.get('/api/scores', async (c) => {
+  const requested = Number(c.req.query('limit'));
+  const limit =
+    Number.isInteger(requested) && requested > 0 ? Math.min(requested, 100) : LEADERBOARD_LIMIT;
+
+  const { results } = await topScores(c.env, limit);
   return c.json({ scores: rankScores(results ?? [], limit) });
 });
 
@@ -128,11 +148,26 @@ app.post('/api/runs/:id/finish', async (c) => {
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== 'object') return c.json({ error: 'body must be JSON' }, 400);
 
-  const { name, log, durationMs } = body as { name?: unknown; log?: unknown; durationMs?: unknown };
+  const { name, log, durationMs, url } = body as {
+    name?: unknown;
+    log?: unknown;
+    durationMs?: unknown;
+    url?: unknown;
+  };
   if (typeof log !== 'string') return c.json({ error: 'log is required' }, 400);
   if (log.length > MAX_LOG_BYTES) return c.json({ error: 'log is too large' }, 413);
   if (typeof durationMs !== 'number' || !Number.isFinite(durationMs)) {
     return c.json({ error: 'durationMs is required' }, 400);
+  }
+
+  // A link is optional, but a malformed one is still a rejection: it would end
+  // up in an href on the side slot if the run places.
+  let slotUrl: string | null;
+  try {
+    slotUrl = sanitizeOptionalUrl(url);
+  } catch (error) {
+    if (error instanceof ValidationError) return c.json({ error: error.message }, 400);
+    throw error;
   }
 
   const run = await c.env.DB.prepare(
@@ -168,12 +203,13 @@ app.post('/api/runs/:id/finish', async (c) => {
     merges: outcome.merges,
     durationMs: outcome.durationMs,
     createdAt: nowIso(),
+    url: slotUrl,
   };
 
   await c.env.DB.batch([
     c.env.DB.prepare(
-      `INSERT INTO scores (id, run_id, name, score, level, best_tile, merges, duration_ms, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+      `INSERT INTO scores (id, run_id, name, score, level, best_tile, merges, duration_ms, created_at, url)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
     ).bind(
       entry.id,
       runId,
@@ -184,68 +220,88 @@ app.post('/api/runs/:id/finish', async (c) => {
       entry.merges,
       entry.durationMs,
       entry.createdAt,
+      entry.url,
     ),
     c.env.DB.prepare(`UPDATE runs SET status = 'submitted' WHERE id = ?1`).bind(runId),
   ]);
 
-  const { results } = await c.env.DB.prepare(
-    `SELECT id, name, score, level, best_tile AS bestTile, merges, duration_ms AS durationMs,
-            created_at AS createdAt
-       FROM scores
-      ORDER BY score DESC, best_tile DESC, created_at ASC
-      LIMIT ?1`,
-  )
-    .bind(LEADERBOARD_LIMIT)
-    .all<ScoreRow>();
-
-  const scores = rankScores(results ?? [], LEADERBOARD_LIMIT);
+  const { results } = await topScores(c.env, SIDE_SLOT_POOL);
+  const pool = results ?? [];
+  const scores = rankScores(pool, LEADERBOARD_LIMIT);
   const index = scores.findIndex((row) => row.id === entry.id);
+  const slots = sideSlots(pool);
 
   return c.json(
-    { rank: index === -1 ? null : index + 1, entry, scores, verifiedScore: outcome.score },
+    {
+      rank: index === -1 ? null : index + 1,
+      entry,
+      scores,
+      sideSlots: slots,
+      /** Did this run take one of the earned slots? */
+      wonSideSlot: slots.some((row) => row.id === entry.id),
+      verifiedScore: outcome.score,
+    },
     201,
   );
 });
 
-/* ------------------------------------------------------------------ banner */
+/* ------------------------------------------------------------------- board */
 
-interface BannerRow {
+interface ListingRow {
   id: string;
-  text: string;
+  title: string;
+  tagline: string;
   url: string;
   name: string;
   amount_cents: number;
   claimed_at: string;
 }
 
-async function currentBanner(env: Env): Promise<BannerRow | null> {
-  return env.DB.prepare(
-    `SELECT id, text, url, name, amount_cents, claimed_at
+const listingJson = (row: ListingRow): Listing => ({
+  id: row.id,
+  title: row.title,
+  tagline: row.tagline ?? '',
+  url: row.url,
+  name: row.name,
+  amountCents: row.amount_cents,
+  claimedAt: row.claimed_at,
+});
+
+/**
+ * Every claim that cleared, best-paid first.
+ *
+ * `text` is the v1 column name for what is now the listing title; the schema
+ * keeps it so old rows stay on the board rather than vanishing in a rename.
+ */
+async function boardListings(env: Env, limit = BOARD_LIMIT): Promise<Listing[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT id, text AS title, tagline, url, name, amount_cents, claimed_at
        FROM banner_claims
       WHERE status = 'live'
       ORDER BY amount_cents DESC, claimed_at ASC
-      LIMIT 1`,
-  ).first<BannerRow>();
+      LIMIT ?1`,
+  )
+    .bind(limit)
+    .all<ListingRow>();
+
+  return rankListings((results ?? []).map(listingJson), limit);
 }
 
-const bannerJson = (row: BannerRow | null) =>
-  row
-    ? {
-        text: row.text,
-        url: row.url,
-        name: row.name,
-        amountCents: row.amount_cents,
-        claimedAt: row.claimed_at,
-      }
-    : null;
-
-app.get('/api/banner', async (c) => {
-  const row = await currentBanner(c.env);
+app.get('/api/board', async (c) => {
+  const [listings, scores] = await Promise.all([
+    boardListings(c.env),
+    topScores(c.env, SIDE_SLOT_POOL),
+  ]);
   const config = readPayPalConfig(c.env as unknown as Record<string, unknown>);
+  const top = listings[0]?.amountCents ?? null;
 
   return c.json({
-    banner: bannerJson(row),
-    minimumCents: minimumClaimCents(row?.amount_cents ?? null),
+    listings,
+    sideSlots: sideSlots(scores.results ?? []),
+    /** What #1 would cost right now. */
+    topSpotCents: topSpotCents(top),
+    /** What any seat costs. */
+    entryCents: entryCents(),
     // The client only ever learns the public id, never the secret.
     paypalClientId: config?.clientId ?? null,
     paypalEnvironment: config?.environment ?? null,
@@ -254,31 +310,35 @@ app.get('/api/banner', async (c) => {
 });
 
 /** Stage a claim and open a PayPal order for it. Nothing goes live yet. */
-app.post('/api/banner/orders', async (c) => {
+app.post('/api/board/orders', async (c) => {
   const config = readPayPalConfig(c.env as unknown as Record<string, unknown>);
   if (!config) return c.json({ error: 'payments are not configured on this deployment' }, 503);
 
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== 'object') return c.json({ error: 'body must be JSON' }, 400);
 
-  const raw = body as { text?: unknown; url?: unknown; name?: unknown; amountUsd?: unknown };
+  const raw = body as {
+    title?: unknown;
+    tagline?: unknown;
+    url?: unknown;
+    name?: unknown;
+    amountUsd?: unknown;
+  };
 
-  let text: string;
+  let title: string;
+  let tagline: string;
   let url: string;
   let amountCents: number;
   try {
-    text = sanitizeBannerText(raw.text);
-    url = sanitizeBannerUrl(raw.url);
+    title = sanitizeListingTitle(raw.title);
+    tagline = sanitizeListingTagline(raw.tagline);
+    url = sanitizeListingUrl(raw.url);
     amountCents = parseUsdToCents(raw.amountUsd);
+    // Any bid above the floor is legal. It buys a rank, not a guarantee of #1.
+    assertBidCents(amountCents);
   } catch (error) {
     if (error instanceof ValidationError) return c.json({ error: error.message }, 400);
     throw error;
-  }
-
-  const existing = await currentBanner(c.env);
-  const minimum = minimumClaimCents(existing?.amount_cents ?? null);
-  if (amountCents < minimum) {
-    return c.json({ error: `bid at least ${(minimum / 100).toFixed(2)}`, minimumCents: minimum }, 409);
   }
 
   const claimId = newId();
@@ -289,30 +349,32 @@ app.post('/api/banner/orders', async (c) => {
     order = await paypal.createOrder({
       amountCents,
       currency: currencyOf(c.env),
-      description: `SURGE banner — ${text}`,
+      description: `SURGE board — ${title}`,
       referenceId: claimId,
     });
   } catch (error) {
-    if (error instanceof PayPalError) return c.json({ error: error.message }, error.status as 400 | 502);
+    if (error instanceof PayPalError) {
+      return c.json({ error: error.message }, error.status as 400 | 502);
+    }
     throw error;
   }
 
   await c.env.DB.prepare(
     `INSERT INTO banner_claims
-       (id, order_id, text, url, name, amount_cents, status, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending', ?7)`,
+       (id, order_id, text, tagline, url, name, amount_cents, status, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', ?8)`,
   )
-    .bind(claimId, order.id, text, url, sanitizeName(raw.name), amountCents, nowIso())
+    .bind(claimId, order.id, title, tagline, url, sanitizeName(raw.name), amountCents, nowIso())
     .run();
 
-  return c.json({ orderId: order.id, minimumCents: minimum }, 201);
+  return c.json({ orderId: order.id }, 201);
 });
 
 /**
- * Capture an approved order. This is the only path that puts a banner live,
- * and it only does so on PayPal's confirmation of a completed capture.
+ * Capture an approved order. This is the only path that puts a listing on the
+ * board, and it only does so on PayPal's confirmation of a completed capture.
  */
-app.post('/api/banner/orders/:orderId/capture', async (c) => {
+app.post('/api/board/orders/:orderId/capture', async (c) => {
   const config = readPayPalConfig(c.env as unknown as Record<string, unknown>);
   if (!config) return c.json({ error: 'payments are not configured' }, 503);
 
@@ -320,66 +382,62 @@ app.post('/api/banner/orders/:orderId/capture', async (c) => {
   const paypal = new PayPalClient(config);
 
   try {
-    const banner = await settleOrder(c.env, paypal, orderId);
-    if (!banner) return c.json({ error: 'that payment has not completed' }, 402);
-    return c.json({ banner });
+    const listing = await settleOrder(c.env, paypal, orderId);
+    if (!listing) return c.json({ error: 'that payment has not completed' }, 402);
+    const listings = await boardListings(c.env);
+    const rank = listings.findIndex((row) => row.id === listing.id);
+    return c.json({ listing, listings, rank: rank === -1 ? null : rank + 1 });
   } catch (error) {
-    if (error instanceof PayPalError) return c.json({ error: error.message }, error.status as 400 | 502);
+    if (error instanceof PayPalError) {
+      return c.json({ error: error.message }, error.status as 400 | 502);
+    }
     throw error;
   }
 });
 
 /**
- * Take a captured order and, if the money really cleared, hand the banner over.
+ * Take a captured order and, if the money really cleared, seat it.
  *
  * Shared by the browser capture call and the webhook so both arrive at the same
- * state — whichever gets there first wins and the other is a no-op.
+ * state — whichever gets there first wins and the other is a no-op. There is no
+ * race to lose any more: a claim that clears while someone else is paying more
+ * simply lands below them.
  */
 async function settleOrder(
   env: Env,
   paypal: PayPalClient,
   orderId: string,
   alreadyCaptured = false,
-): Promise<ReturnType<typeof bannerJson>> {
+): Promise<Listing | null> {
   const claim = await env.DB.prepare(
-    `SELECT id, order_id, text, url, name, amount_cents, status, claimed_at
+    `SELECT id, text AS title, tagline, url, name, amount_cents, status, claimed_at
        FROM banner_claims WHERE order_id = ?1`,
   )
     .bind(orderId)
-    .first<BannerRow & { order_id: string; status: string }>();
+    .first<ListingRow & { status: string }>();
 
   if (!claim) return null;
-  // Already settled: return what is live rather than double-charging anything.
-  if (claim.status === 'live') return bannerJson(claim);
+  // Already settled: return the seat rather than capturing a second time.
+  if (claim.status === 'live') return listingJson(claim);
 
-  const captured = alreadyCaptured ? await paypal.getOrder(orderId) : await paypal.captureOrder(orderId);
+  const captured = alreadyCaptured
+    ? await paypal.getOrder(orderId)
+    : await paypal.captureOrder(orderId);
   if (captured.status !== 'COMPLETED') return null;
 
   // Trust the amount PayPal says cleared, not the one the client asked for.
   const paidCents = captured.amountCents;
-  const standing = await currentBanner(env);
-  if (paidCents < minimumClaimCents(standing?.amount_cents ?? null)) {
-    // Someone outbid them while the PayPal window was open. Keep the record so
-    // the money is traceable, but do not hand over the slot.
-    await env.DB.prepare(
-      `UPDATE banner_claims SET status = 'outbid', amount_cents = ?2, capture_id = ?3 WHERE id = ?1`,
-    )
-      .bind(claim.id, paidCents, captured.captureId)
-      .run();
-    return null;
-  }
-
   const claimedAt = nowIso();
-  await env.DB.batch([
-    env.DB.prepare(`UPDATE banner_claims SET status = 'retired' WHERE status = 'live'`),
-    env.DB.prepare(
-      `UPDATE banner_claims
-          SET status = 'live', amount_cents = ?2, capture_id = ?3, claimed_at = ?4
-        WHERE id = ?1`,
-    ).bind(claim.id, paidCents, captured.captureId, claimedAt),
-  ]);
 
-  return bannerJson({ ...claim, amount_cents: paidCents, claimed_at: claimedAt });
+  await env.DB.prepare(
+    `UPDATE banner_claims
+        SET status = 'live', amount_cents = ?2, capture_id = ?3, claimed_at = ?4
+      WHERE id = ?1`,
+  )
+    .bind(claim.id, paidCents, captured.captureId, claimedAt)
+    .run();
+
+  return listingJson({ ...claim, amount_cents: paidCents, claimed_at: claimedAt });
 }
 
 /**
@@ -393,7 +451,7 @@ app.post('/api/paypal/webhook', async (c) => {
   const raw = await c.req.text();
   const paypal = new PayPalClient(config);
 
-  // Never act on an unverified webhook: it decides who owns the banner.
+  // Never act on an unverified webhook: it decides who is on the board.
   const verified = await paypal.verifyWebhook(c.req.raw.headers, raw);
   if (!verified) return c.json({ error: 'signature verification failed' }, 401);
 
@@ -402,7 +460,10 @@ app.post('/api/paypal/webhook', async (c) => {
     resource?: { id?: string; supplementary_data?: { related_ids?: { order_id?: string } } };
   };
 
-  if (event.event_type !== 'PAYMENT.CAPTURE.COMPLETED' && event.event_type !== 'CHECKOUT.ORDER.APPROVED') {
+  if (
+    event.event_type !== 'PAYMENT.CAPTURE.COMPLETED' &&
+    event.event_type !== 'CHECKOUT.ORDER.APPROVED'
+  ) {
     return c.json({ ok: true, ignored: event.event_type ?? 'unknown' });
   }
 

@@ -14,7 +14,7 @@ import type { Direction, GameState } from './game/types.js';
 import { Renderer } from './render/renderer.js';
 import { api } from './net/api.js';
 import { installAgentApi, type InstalledAgentApi } from './ui/agent.js';
-import { BannerController, type BannerElements } from './ui/banner.js';
+import { BoardController, type BoardElements } from './ui/board.js';
 import { LeaderboardView, formatNumber } from './ui/leaderboard.js';
 import { Tutorial } from './ui/tutorial.js';
 import { encodeActions, type Action } from '../shared/replay.js';
@@ -64,6 +64,8 @@ const els = {
   overlayStats: $('#overlay-stats'),
   saveForm: $<HTMLFormElement>('#save-form'),
   playerName: $<HTMLInputElement>('#player-name'),
+  playerUrl: $<HTMLInputElement>('#player-url'),
+  scoresCount: $('#scores-count'),
   saveButton: $<HTMLButtonElement>('#save-score'),
   saveStatus: $('#save-status'),
   playAgain: $<HTMLButtonElement>('#play-again'),
@@ -76,25 +78,33 @@ const leaderboard = new LeaderboardView({
   status: $('#leaderboard-status'),
 });
 
-const banner = new BannerController({
-  slot: $('#banner-slot'),
-  link: $<HTMLAnchorElement>('#banner-link'),
-  text: $('#banner-text'),
-  holder: $('#banner-holder'),
-  amount: $('#banner-amount'),
-  empty: $('#banner-empty'),
-  claimButton: $<HTMLButtonElement>('#banner-claim'),
-  dialog: $<HTMLDialogElement>('#banner-dialog'),
-  form: $<HTMLFormElement>('#banner-form'),
-  inputText: $<HTMLInputElement>('#banner-input-text'),
-  inputUrl: $<HTMLInputElement>('#banner-input-url'),
-  inputName: $<HTMLInputElement>('#banner-input-name'),
-  inputAmount: $<HTMLInputElement>('#banner-input-amount'),
-  minimumNote: $('#banner-minimum'),
-  status: $('#banner-status'),
+const board = new BoardController({
+  heroPrice: $('#hero-price'),
+  heroDown: $<HTMLButtonElement>('#hero-down'),
+  heroUp: $<HTMLButtonElement>('#hero-up'),
+  heroEntry: $('#hero-entry'),
+  heroUrl: $<HTMLInputElement>('#hero-url'),
+  heroGo: $<HTMLButtonElement>('#hero-go'),
+
+  list: $('#board-list'),
+  empty: $('#board-empty'),
+  status: $('#board-status-msg'),
+  count: $('#board-count'),
+
+  sideSlots: $('#side-slots'),
+
+  dialog: $<HTMLDialogElement>('#claim-dialog'),
+  form: $<HTMLFormElement>('#claim-form'),
+  inputTitle: $<HTMLInputElement>('#claim-title'),
+  inputTagline: $<HTMLInputElement>('#claim-tagline'),
+  inputUrl: $<HTMLInputElement>('#claim-url'),
+  inputName: $<HTMLInputElement>('#claim-name'),
+  inputAmount: $<HTMLInputElement>('#claim-amount'),
+  note: $('#claim-note'),
+  claimStatus: $('#claim-status'),
   paypalMount: $('#paypal-buttons'),
-  closeButton: $<HTMLButtonElement>('#banner-close'),
-} satisfies BannerElements);
+  closeButton: $<HTMLButtonElement>('#claim-close'),
+} satisfies BoardElements);
 
 const tutorial = new Tutorial({
   root: $('#tutorial'),
@@ -127,7 +137,32 @@ let runEndedAt = 0;
 let best = Number(safeGet('surge.best') ?? 0) || 0;
 let agent: InstalledAgentApi;
 
-const engineNow = (): number => performance.now() - runOrigin;
+/**
+ * Time the run has actually been watchable, in milliseconds.
+ *
+ * requestAnimationFrame is frozen while the tab is hidden, so the engine stops
+ * ticking — but wall-clock time does not. Without this the rises that fell due
+ * while you were away all land in the first frame after you come back and bury
+ * you before you can move. Discounting hidden time pauses the run instead.
+ *
+ * Every other timestamp is derived from this, including the offsets in the
+ * action log, so the server's replay stays in step with what the player saw.
+ */
+let hiddenTotal = 0;
+let hiddenSince = 0;
+
+const hiddenElapsed = (): number => (hiddenSince ? performance.now() - hiddenSince : 0);
+
+const engineNow = (): number => performance.now() - runOrigin - hiddenTotal - hiddenElapsed();
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    hiddenSince = performance.now();
+  } else if (hiddenSince) {
+    hiddenTotal += performance.now() - hiddenSince;
+    hiddenSince = 0;
+  }
+});
 
 /* ------------------------------------------------------------- run control */
 
@@ -149,6 +184,8 @@ async function startRun(): Promise<void> {
 
   game = new SurgeGame({ seed });
   runOrigin = performance.now();
+  hiddenTotal = 0;
+  hiddenSince = document.hidden ? performance.now() : 0;
   game.start(0);
 
   renderer.clear();
@@ -305,16 +342,23 @@ async function submitScore(event: Event): Promise<void> {
       name,
       log: encodeActions(actions),
       durationMs: Math.round(runEndedAt),
+      url: els.playerUrl.value.trim() || null,
     });
 
     submitted = true;
     safeSet(NAME_KEY, name);
     leaderboard.setRows(outcome.scores);
     leaderboard.highlight(outcome.entry.id);
+    // A posted run can change who holds the earned slots, so refresh them here
+    // rather than making the player reload to see it.
+    board.setSideSlots(outcome.sideSlots);
+    els.scoresCount.textContent = String(outcome.scores.length);
     els.saveForm.hidden = true;
-    els.overlayStats.textContent = outcome.rank
-      ? `${formatNumber(outcome.verifiedScore)} points — #${outcome.rank} on the board.`
-      : `${formatNumber(outcome.verifiedScore)} points. Not a top ${leaderboard.entries.length} run this time.`;
+    els.overlayStats.textContent = outcome.wonSideSlot
+      ? `${formatNumber(outcome.verifiedScore)} points — #${outcome.rank}, and you took an earned slot.`
+      : outcome.rank
+        ? `${formatNumber(outcome.verifiedScore)} points — #${outcome.rank} on the board.`
+        : `${formatNumber(outcome.verifiedScore)} points. Not a top ${leaderboard.entries.length} run this time.`;
     els.playAgain.focus();
   } catch (error) {
     els.saveStatus.classList.add('is-error');
@@ -444,8 +488,10 @@ async function boot(): Promise<void> {
   els.playerName.value = safeGet(NAME_KEY) ?? '';
   els.best.textContent = formatNumber(best);
 
-  void banner.refresh();
-  void leaderboard.refresh();
+  void board.refresh();
+  void leaderboard.refresh().then(() => {
+    els.scoresCount.textContent = String(leaderboard.entries.length);
+  });
 
   await startRun();
 

@@ -12,7 +12,7 @@
 
 import { CHARGE_MAX, COMBO_MAX } from '../game/engine.js';
 import type { Ghost, Tile } from '../game/types.js';
-import { comboColor, tileColor } from './palette.js';
+import { BOARD, BOARD_FONT, comboColor, tileColor } from './palette.js';
 
 interface VisualTile {
   id: number;
@@ -284,18 +284,18 @@ export class Renderer {
   onRise(crushed: boolean): void {
     if (crushed) {
       this.addShake(16);
-      this.flashWith('#ff2d55', 1);
+      this.flashWith(BOARD.crushFlash, 1);
     } else {
       this.addShake(2.5);
-      this.ripples.push({ y: this.rows - 0.5, life: 520, maxLife: 520, color: 'hsl(0 90% 60% / 0.5)' });
+      this.ripples.push({ y: this.rows - 0.5, life: 520, maxLife: 520, color: BOARD.riseRipple });
     }
   }
 
   /** A vent fired: shockwave from the floor and a cool flash. */
   onVent(): void {
     this.addShake(9);
-    this.flashWith('#38f9d7', 0.55);
-    this.ripples.push({ y: this.rows - 0.5, life: 720, maxLife: 720, color: 'hsl(168 100% 62% / 0.7)' });
+    this.flashWith(BOARD.ventFlash, 0.55);
+    this.ripples.push({ y: this.rows - 0.5, life: 720, maxLife: 720, color: BOARD.ventRipple });
   }
 
   /* ---------------------------------------------------------------- frame */
@@ -397,14 +397,14 @@ export class Renderer {
     ctx.save();
     ctx.beginPath();
     roundRect(ctx, this.originX - this.gap, this.originY - this.gap, boardW + this.gap * 2, boardH + this.gap * 2, this.cell * 0.16);
-    ctx.fillStyle = 'rgba(8, 12, 24, 0.72)';
+    ctx.fillStyle = BOARD.well;
     ctx.fill();
 
     // The top row is where you lose, so it stays lit as a warning.
     const danger = 0.1 + hud.risePressure * 0.5;
     ctx.beginPath();
     roundRect(ctx, this.originX - this.gap * 0.5, this.originY - this.gap * 0.5, boardW + this.gap, this.cell + this.gap, this.cell * 0.12);
-    ctx.fillStyle = `rgba(255, 60, 90, ${danger * 0.16})`;
+    ctx.fillStyle = BOARD.danger(danger * 0.16);
     ctx.fill();
     ctx.restore();
 
@@ -412,7 +412,7 @@ export class Renderer {
       for (let col = 0; col < this.cols; col += 1) {
         ctx.beginPath();
         roundRect(ctx, this.cellX(col), this.cellY(row), this.cell, this.cell, this.cell * 0.16);
-        ctx.fillStyle = row === 0 ? 'rgba(255, 90, 120, 0.07)' : 'rgba(255, 255, 255, 0.035)';
+        ctx.fillStyle = row === 0 ? BOARD.cellDanger : BOARD.cell;
         ctx.fill();
       }
     }
@@ -466,7 +466,7 @@ export class Renderer {
       ctx.globalAlpha = Math.max(0, Math.min(1, visual.alpha));
       const label = String(visual.value);
       ctx.fillStyle = color.text;
-      ctx.font = `700 ${this.fontSizeFor(label, size)}px "Space Grotesk", "Segoe UI", system-ui, sans-serif`;
+      ctx.font = `700 ${this.fontSizeFor(label, size)}px ${BOARD_FONT}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(label, cx, cy + size * 0.02);
@@ -528,11 +528,11 @@ export class Renderer {
     for (const f of this.floaters) {
       const t = f.life / f.maxLife;
       ctx.globalAlpha = Math.max(0, Math.min(1, t * 1.6));
-      ctx.font = `800 ${Math.max(12, this.cell * 0.26)}px "Space Grotesk", system-ui, sans-serif`;
+      ctx.font = `800 ${Math.max(12, this.cell * 0.26)}px ${BOARD_FONT}`;
       // These land on top of bright tiles, so outline them rather than relying
       // on the fill colour alone to stay readable.
       ctx.lineWidth = Math.max(2, this.cell * 0.05);
-      ctx.strokeStyle = 'rgba(4, 8, 18, 0.92)';
+      ctx.strokeStyle = BOARD.floaterOutline;
       ctx.lineJoin = 'round';
       ctx.strokeText(f.text, f.x, f.y);
       ctx.fillStyle = f.color;
@@ -551,20 +551,20 @@ export class Renderer {
     ctx.save();
     ctx.beginPath();
     roundRect(ctx, this.originX, y, boardW, h, h / 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillStyle = BOARD.track;
     ctx.fill();
 
     const urgency = Math.min(1, pressure);
     ctx.beginPath();
     roundRect(ctx, this.originX, y, Math.max(2, boardW * urgency), h, h / 2);
-    ctx.fillStyle = `hsl(${(1 - urgency) * 40} 95% ${52 + urgency * 10}%)`;
+    ctx.fillStyle = BOARD.pressure(urgency);
     ctx.fill();
 
     // Charge sits just above, filling toward a usable vent.
     const chargeRatio = Math.min(1, charge / CHARGE_MAX);
     ctx.beginPath();
     roundRect(ctx, this.originX, y - 8, Math.max(0, boardW * chargeRatio), 3, 1.5);
-    ctx.fillStyle = chargeRatio >= 1 ? '#38f9d7' : 'rgba(56, 249, 215, 0.45)';
+    ctx.fillStyle = chargeRatio >= 1 ? BOARD.chargeFull : BOARD.chargeIdle;
     ctx.fill();
     ctx.restore();
   }

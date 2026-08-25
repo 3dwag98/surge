@@ -134,7 +134,8 @@ Do not try to POST a score — there is no endpoint that accepts one.
    choice in the run.
 2. You play. The client records each action as `(type, millisecond offset)`.
 3. `POST /api/runs/:runId/finish` sends `{ name, log, durationMs }` where `log`
-   is the encoded action list.
+   is the encoded action list. An optional `url` (https only) is hung off the
+   earned side slot if the run places in the top three.
 4. The server replays that log against the seed it issued and stores **the
    score its own engine produces**. The reply includes `verifiedScore`.
 
@@ -158,9 +159,13 @@ Consequences worth knowing:
 |---|---|---|
 | `GET` | `/api/scores?limit=25` | Top scores, best first. |
 | `POST` | `/api/runs` | Open a run, receive `{ runId, seed }`. |
-| `POST` | `/api/runs/:id/finish` | Submit `{ name, log, durationMs }`. |
-| `GET` | `/api/banner` | Current sponsor banner and the minimum bid to take it. |
+| `POST` | `/api/runs/:id/finish` | Submit `{ name, log, durationMs }`, plus an optional `url`. |
+| `GET` | `/api/board` | Paid listings ranked by amount, the earned side slots, and the current prices. |
 | `GET` | `/api/health` | Liveness. |
 
-The banner is a paid slot and is unrelated to the leaderboard. Playing is free,
-and no payment affects ranking in any way.
+The paid board is an auction and is unrelated to the scores. Playing is free,
+and no payment affects a score or a rank in any way.
+
+The three **side slots** are the exception worth knowing about: they are held by
+the three best runs, one per player, and cannot be bought. A bot that scores
+well takes one the same way a human does.
