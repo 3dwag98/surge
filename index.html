@@ -172,6 +172,7 @@
         <div class="deck">
           <button type="button" class="vent" id="vent" disabled>
             <span class="vent-fill" aria-hidden="true"></span>
+            <span class="vent-over" aria-hidden="true"></span>
             <span class="vent-label" id="vent-label">Charging 0%</span>
             <kbd class="vent-key" id="vent-key" hidden>Space</kbd>
           </button>
@@ -236,6 +237,14 @@
               <dd class="system-note">
                 A full meter blows out the bottom row. It buys space, not time — the timer keeps
                 running.
+              </dd>
+            </div>
+            <div class="system">
+              <dt>Overcharge</dt>
+              <dd class="system-value">2× meter</dd>
+              <dd class="system-note">
+                Keep merging past full and the vent becomes a Surge, worth two rows. Holding it is
+                a bet: twice the room, no valve while you wait.
               </dd>
             </div>
           </dl>

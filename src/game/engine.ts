@@ -10,6 +10,7 @@
  *     value times the combo you had going, so speed pays.
  *   - Merging builds charge. A full meter buys a Vent: the bottom row is
  *     blown out and the board drops back down, the exact inverse of a rise.
+ *     Keep merging past full and it overcharges into a Surge, worth two rows.
  *
  * There is no winning tile and no end state but failure — it is a score chase.
  *
@@ -47,6 +48,15 @@ export const MERGES_PER_LEVEL = 12;
 
 /** A full meter buys one Vent. Merging a tile of value V adds log2(V). */
 export const CHARGE_MAX = 20;
+/**
+ * Keep merging past a full meter and the vent overcharges into a Surge, which
+ * blows out two rows instead of one.
+ *
+ * This is the decision the meter was missing. A full meter used to be a flat
+ * "spend it whenever"; now holding it is a bet — you are buying twice the room
+ * at the price of playing on with no valve while the floor keeps climbing.
+ */
+export const CHARGE_SURGE = 40;
 
 /** Guard rails for replay: a submitted run may not exceed these. */
 export const MAX_MOVES = 20000;
@@ -162,6 +172,11 @@ export class SurgeGame {
     return this.status === 'playing' && this.charge >= CHARGE_MAX && this.ventArmed;
   }
 
+  /** True when the meter has overcharged and the next vent clears two rows. */
+  get canSurge(): boolean {
+    return this.status === 'playing' && this.charge >= CHARGE_SURGE && this.ventArmed;
+  }
+
   /** Milliseconds until the next row pushes in. */
   msToRise(now: number = this.now): number {
     return Math.max(0, this.nextRiseAt - now);
@@ -192,6 +207,8 @@ export class SurgeGame {
       comboRemaining: this.comboRemaining(now),
       charge: this.charge,
       chargeMax: CHARGE_MAX,
+      chargeSurge: CHARGE_SURGE,
+      canSurge: this.canSurge,
       canVent: this.canVent,
       ventArmed: this.ventArmed,
       level: this.level,
@@ -333,7 +350,7 @@ export class SurgeGame {
       scoreGained = mergedValueTotal * comboApplied;
       this.score += scoreGained;
       this.merges += mergeCount;
-      this.charge = Math.min(CHARGE_MAX, this.charge + chargeGained);
+      this.charge = Math.min(CHARGE_SURGE, this.charge + chargeGained);
       this.combo = Math.min(COMBO_MAX, this.combo + mergeCount);
       this.comboExpiresAt = now + COMBO_WINDOW_MS;
     }
@@ -364,20 +381,26 @@ export class SurgeGame {
    */
   vent(now: number): VentResult {
     this.tick(now);
-    if (!this.canVent) return { vented: false, removed: [] };
+    if (!this.canVent) return { vented: false, removed: [], rows: 0 };
 
+    // An overcharged meter blows out two rows instead of one. It is still one
+    // vent: the valve re-arms on the next rise either way, so a Surge buys more
+    // room, never more chances.
+    const surged = this.canSurge;
+    const depth = Math.min(surged ? 2 : 1, this.rows);
     const removed: Ghost[] = [];
-    const bottom = this.rows - 1;
 
-    for (let col = 0; col < this.cols; col += 1) {
-      const tile = this.grid[bottom]![col];
-      if (tile) removed.push(toGhost(tile, 'vent'));
+    for (let row = this.rows - depth; row < this.rows; row += 1) {
+      for (let col = 0; col < this.cols; col += 1) {
+        const tile = this.grid[row]![col];
+        if (tile) removed.push(toGhost(tile, 'vent'));
+      }
     }
 
-    // Shift every row down one; the top row is left empty.
-    for (let row = this.rows - 1; row > 0; row -= 1) {
+    // Shift every surviving row down by `depth`; the rows it vacates are empty.
+    for (let row = this.rows - 1; row >= depth; row -= 1) {
       for (let col = 0; col < this.cols; col += 1) {
-        const above = this.grid[row - 1]![col] ?? null;
+        const above = this.grid[row - depth]![col] ?? null;
         this.grid[row]![col] = above;
         if (above) {
           above.previous = { row: above.row, col: above.col };
@@ -387,14 +410,15 @@ export class SurgeGame {
         }
       }
     }
-    for (let col = 0; col < this.cols; col += 1) {
-      this.grid[0]![col] = null;
+    for (let row = 0; row < depth; row += 1) {
+      for (let col = 0; col < this.cols; col += 1) this.grid[row]![col] = null;
     }
 
     this.charge = 0;
     this.ventArmed = false;
-    return { vented: true, removed };
+    return { vented: true, removed, rows: depth };
   }
+
 
   /* ------------------------------------------------------------ internals */
 

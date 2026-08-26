@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CHARGE_MAX,
+  CHARGE_SURGE,
   COMBO_MAX,
   COMBO_WINDOW_MS,
   MERGES_PER_LEVEL,
@@ -351,11 +352,70 @@ describe('charge and venting', () => {
     const result = game.vent(NO_RISE);
 
     expect(result.vented).toBe(true);
+    expect(result.rows).toBe(1);
     expect(result.removed.map((ghost) => ghost.value)).toEqual([8]);
     expect(values(game)[0]).toEqual([0, 0, 0, 0, 0]); // top row cleared
     expect(values(game)[2]![0]).toBe(2); // everything fell one row
     expect(values(game)[3]![1]).toBe(4);
     expect(game.charge).toBe(0);
+  });
+
+  it('overcharges into a Surge that clears two rows', () => {
+    const game = boardOf([
+      [0, 0, 0, 0, 0],
+      [2, 0, 0, 0, 0],
+      [0, 4, 0, 0, 0],
+      [16, 0, 0, 0, 0],
+      [0, 0, 0, 0, 8],
+    ]);
+    (game as unknown as { charge: number }).charge = CHARGE_SURGE;
+    expect(game.canSurge).toBe(true);
+
+    const result = game.vent(NO_RISE);
+
+    expect(result.vented).toBe(true);
+    expect(result.rows).toBe(2);
+    // Both of the bottom two rows went, not just the floor.
+    expect(result.removed.map((ghost) => ghost.value).sort()).toEqual([16, 8]);
+    expect(values(game)[0]).toEqual([0, 0, 0, 0, 0]);
+    expect(values(game)[1]).toEqual([0, 0, 0, 0, 0]);
+    expect(values(game)[3]![0]).toBe(2); // everything fell two rows
+    expect(values(game)[4]![1]).toBe(4);
+    expect(game.charge).toBe(0);
+  });
+
+  it('a merely full meter is still worth one row, not two', () => {
+    const game = boardOf([
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [2, 0, 0, 0, 0],
+      [0, 0, 0, 0, 4],
+    ]);
+    (game as unknown as { charge: number }).charge = CHARGE_SURGE - 1;
+    expect(game.canVent).toBe(true);
+    expect(game.canSurge).toBe(false);
+
+    expect(game.vent(NO_RISE).rows).toBe(1);
+    expect(values(game)[4]![0]).toBe(2); // the 2 fell exactly one row
+  });
+
+  it('a Surge is still one vent: it does not re-arm the valve', () => {
+    const game = boardOf([
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [2, 0, 0, 0, 0],
+    ]);
+    (game as unknown as { charge: number }).charge = CHARGE_SURGE;
+
+    expect(game.vent(NO_RISE).rows).toBe(2);
+    // Refilling the meter in the same window buys nothing until the next rise.
+    (game as unknown as { charge: number }).charge = CHARGE_SURGE;
+    expect(game.canVent).toBe(false);
+    expect(game.canSurge).toBe(false);
+    expect(game.vent(NO_RISE).vented).toBe(false);
   });
 
   it('buys space but never time', () => {
@@ -454,7 +514,7 @@ describe('long random play', () => {
         expect(snapshot.grid[tile.row]![tile.col]).toBe(tile.value);
       }
       expect(snapshot.score).toBeGreaterThanOrEqual(0);
-      expect(snapshot.charge).toBeLessThanOrEqual(CHARGE_MAX);
+      expect(snapshot.charge).toBeLessThanOrEqual(CHARGE_SURGE);
     }
 
     expect(game.status).toBe('over');

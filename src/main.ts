@@ -337,8 +337,12 @@ function applyVent(): void {
   record('vent', at);
   renderer.applyGhosts(result.removed);
   renderer.sync(game.tiles);
-  renderer.onVent();
-  announce('Vented. The board dropped a row; the rise timer keeps running.');
+  renderer.onVent(result.rows);
+  announce(
+    result.rows > 1
+      ? 'Surged. Two rows blown out; the rise timer keeps running.'
+      : 'Vented. The board dropped a row; the rise timer keeps running.',
+  );
   afterStateChange(at);
 }
 
@@ -411,24 +415,35 @@ function updateHud(state: GameState): void {
 function updateVent(state: GameState): void {
   const ratio = Math.min(1, state.charge / CHARGE_MAX);
   const charged = ratio >= 1;
-  const status: 'charging' | 'locked' | 'ready' = !charged
+  // Past a full meter the charge keeps climbing toward a two-row Surge, so the
+  // bar has a second stretch to fill and the button a fourth thing to say.
+  const over = Math.min(
+    1,
+    Math.max(0, (state.charge - CHARGE_MAX) / (state.chargeSurge - CHARGE_MAX)),
+  );
+  const status: 'charging' | 'locked' | 'ready' | 'surge' = !charged
     ? 'charging'
-    : state.ventArmed
-      ? 'ready'
-      : 'locked';
+    : !state.ventArmed
+      ? 'locked'
+      : state.canSurge
+        ? 'surge'
+        : 'ready';
 
   els.vent.disabled = !state.canVent;
   els.vent.dataset.state = status;
   els.vent.style.setProperty('--charge', String(ratio));
+  els.vent.style.setProperty('--overcharge', String(over));
 
   els.ventLabel.textContent =
-    status === 'ready'
-      ? 'Vent'
-      : status === 'locked'
-        ? 'Vent ready at the next rise'
-        : `Charging ${Math.round(ratio * 100)}%`;
+    status === 'surge'
+      ? 'Surge · two rows'
+      : status === 'ready'
+        ? `Vent · ${Math.round(over * 100)}% to Surge`
+        : status === 'locked'
+          ? 'Vent ready at the next rise'
+          : `Charging ${Math.round(ratio * 100)}%`;
   // The key hint is a lie on a button that cannot fire.
-  els.ventKey.hidden = status !== 'ready';
+  els.ventKey.hidden = status !== 'ready' && status !== 'surge';
 }
 
 function announce(message: string): void {

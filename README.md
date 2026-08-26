@@ -24,6 +24,7 @@ constant pressure, not a variation on anything else.
 | **Rising floor** | Every few seconds a partial row shoves in from below and everything moves up one. The interval shrinks with every level. Being caught in the top row is the only way to lose. |
 | **Combo window** | Each merge opens a 2.6 s window. Merge again inside it and the multiplier climbs, up to 9x. Score is `merged value x combo`, so a fast chain of small merges beats one slow big one. Stall and it drops straight back to 1x. |
 | **Charge & Vent** | Merging charges a meter. Full, it buys a Vent: the bottom row is blown out and the whole board drops one row — the exact inverse of a rise. It buys **space, not time**; the rise timer keeps running and the valve only re-arms on the next rise. |
+| **Overcharge** | Keep merging instead of spending a full meter and it overcharges at 2x into a **Surge**, worth two rows instead of one. This is the decision the meter was missing: holding it is a bet, buying twice the room at the price of playing on with no valve while the floor climbs. A Surge is still one vent — it does not re-arm anything. |
 | **Feeding** | Every successful move also drops one new tile into the lowest row with space, so there is always material to merge. |
 
 The tuning is deliberate. Venting used to reset the rise timer, which made the
@@ -111,8 +112,9 @@ like two. Charge fills as you merge, but the valve only re-arms on the next
 rise — so a fast player can refill a full meter and still be locked out. A full
 bar over a dead button is what makes a control read as broken, so the button now
 names the state it is actually in: `Charging 60%`, `Vent ready at the next rise`,
-or `Vent` with its key hint, which only appears when pressing it will do
-something.
+`Vent · 70% to Surge`, or `Surge · two rows` in the alarm ink. The key hint only
+appears when pressing it will do something, and the canvas meter grows a second
+stretch above the first for the overcharge.
 
 The one deliberate imprecision is the wordmark: three ink plates a hair out of
 register, multiplied in light and screened in dark.

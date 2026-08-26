@@ -611,6 +611,37 @@ kbd {
   color: #14261f;
 }
 
+/* Overcharged: the alarm ink, because a Surge is the loud version. */
+.vent[data-state='surge'] {
+  background: var(--pink);
+  color: #33101f;
+}
+
+.vent[data-state='surge'] .vent-fill {
+  opacity: 0;
+}
+
+.vent[data-state='surge'] kbd {
+  background: rgb(0 0 0 / 0.16);
+  color: #33101f;
+}
+
+/* The overcharge climbing over a full meter, before it tips into a Surge. */
+.vent-over {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: var(--pink);
+  transform: scaleX(var(--overcharge, 0));
+  transform-origin: left;
+  transition: transform 0.14s linear;
+}
+
+.vent[data-state='surge'] .vent-over,
+.vent[data-state='charging'] .vent-over {
+  opacity: 0;
+}
+
 /* Charged, but not yet re-armed. It must not look like ready. */
 .vent[data-state='locked'] {
   color: var(--ink-3);

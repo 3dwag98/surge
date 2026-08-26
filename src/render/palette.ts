@@ -96,6 +96,9 @@ export interface BoardPalette {
   /** Charge meter: solid once a vent is actually available. */
   chargeFull: string;
   chargeIdle: string;
+  /** The overcharge stretch, climbing toward a two-row Surge. */
+  surgeFull: string;
+  surgeIdle: string;
   /** Full-screen flashes. */
   crushFlash: string;
   ventFlash: string;
@@ -113,6 +116,8 @@ const LIGHT: BoardPalette = {
   pressure: (urgency) => `hsl(${wrap(186 + urgency * 160)} 72% ${58 - urgency * 4}%)`,
   chargeFull: '#3fbfa6',
   chargeIdle: 'rgba(63, 191, 166, 0.32)',
+  surgeFull: '#ff5fa2',
+  surgeIdle: 'rgba(255, 95, 162, 0.34)',
   crushFlash: '#ff5fa2',
   ventFlash: '#6fd9ce',
   riseRipple: 'hsl(336 90% 68% / 0.5)',
@@ -129,6 +134,8 @@ const DARK: BoardPalette = {
   pressure: (urgency) => `hsl(${wrap(186 + urgency * 160)} 68% ${70 - urgency * 4}%)`,
   chargeFull: '#63d6bd',
   chargeIdle: 'rgba(99, 214, 189, 0.3)',
+  surgeFull: '#ff78b0',
+  surgeIdle: 'rgba(255, 120, 176, 0.32)',
   crushFlash: '#ff78b0',
   ventFlash: '#8fe6dc',
   riseRipple: 'hsl(336 88% 76% / 0.5)',

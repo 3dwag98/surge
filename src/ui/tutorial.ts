@@ -69,7 +69,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: 'Vent to buy room',
     diagram: 'vent',
     body:
-      'Merging charges the meter along the bottom. Full, press Space: the bottom row blows out and the board drops. It buys space, not time — the timer keeps running, and the valve re-arms only on the next rise.',
+      'Merging charges the meter along the bottom. Full, press Space: the bottom row blows out and the board drops. It buys space, not time — the timer keeps running, and the valve re-arms only on the next rise. Keep merging instead of spending it and the meter overcharges into a Surge, worth two rows.',
     keys: ['Space'],
   },
   {

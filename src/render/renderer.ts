@@ -10,7 +10,7 @@
  * The engine holds truth; this holds only how that truth currently looks.
  */
 
-import { CHARGE_MAX, COMBO_MAX } from '../game/engine.js';
+import { CHARGE_MAX, CHARGE_SURGE, COMBO_MAX } from '../game/engine.js';
 import type { Ghost, Tile } from '../game/types.js';
 import { board, BOARD_FONT, comboColor, tileColor } from './palette.js';
 
@@ -303,11 +303,20 @@ export class Renderer {
     }
   }
 
-  /** A vent fired: shockwave from the floor and a cool flash. */
-  onVent(): void {
-    this.addShake(9);
-    this.flashWith(board().ventFlash, 0.55);
-    this.ripples.push({ y: this.rows - 0.5, life: 720, maxLife: 720, color: board().ventRipple });
+  /** A vent fired: shockwave from the floor and a cool flash, doubled for a Surge. */
+  onVent(rows = 1): void {
+    const surge = rows > 1;
+    this.addShake(surge ? 15 : 9);
+    this.flashWith(board().ventFlash, surge ? 0.85 : 0.55);
+    this.ripples.push({
+      y: this.rows - 0.5,
+      life: surge ? 900 : 720,
+      maxLife: surge ? 900 : 720,
+      color: board().ventRipple,
+    });
+    if (surge) {
+      this.ripples.push({ y: this.rows - 1.5, life: 900, maxLife: 900, color: board().ventRipple });
+    }
   }
 
   /* ---------------------------------------------------------------- frame */
@@ -596,13 +605,22 @@ export class Renderer {
     ctx.fill();
 
     // Charge along the floor. A full meter that is not yet re-armed is drawn
-    // hollow rather than solid: it is charged, but it is not a vent yet.
+    // hollow rather than solid: it is charged, but it is not a vent yet. Past
+    // full, a second pass overprints the overcharge climbing toward a Surge.
     const chargeRatio = Math.min(1, charge / CHARGE_MAX);
     const chargeY = this.height - BOTTOM_METER / 2 - 1.5;
     ctx.beginPath();
     roundRect(ctx, this.originX, chargeY, Math.max(0, boardW * chargeRatio), 3, 1.5);
     ctx.fillStyle = chargeRatio >= 1 && ventArmed ? palette.chargeFull : palette.chargeIdle;
     ctx.fill();
+
+    const over = Math.min(1, Math.max(0, (charge - CHARGE_MAX) / (CHARGE_SURGE - CHARGE_MAX)));
+    if (over > 0) {
+      ctx.beginPath();
+      roundRect(ctx, this.originX, chargeY - 4, Math.max(0, boardW * over), 3, 1.5);
+      ctx.fillStyle = over >= 1 && ventArmed ? palette.surgeFull : palette.surgeIdle;
+      ctx.fill();
+    }
     ctx.restore();
   }
 

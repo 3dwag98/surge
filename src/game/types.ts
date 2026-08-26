@@ -61,6 +61,8 @@ export interface TickResult {
 export interface VentResult {
   vented: boolean;
   removed: Ghost[];
+  /** How many rows were blown out: 1 for a vent, 2 for a Surge, 0 if it did not fire. */
+  rows: number;
 }
 
 /** Serialisable snapshot — this is what the agent API hands out. */
@@ -77,8 +79,12 @@ export interface GameState {
   comboRemaining: number;
   charge: number;
   chargeMax: number;
+  /** Charge at which the vent overcharges into a two-row Surge. */
+  chargeSurge: number;
   /** True when charge is full and vent() will fire. */
   canVent: boolean;
+  /** True when the meter has overcharged and the next vent clears two rows. */
+  canSurge: boolean;
   /** The valve re-arms on each rise: at most one vent per rise cycle. */
   ventArmed: boolean;
   level: number;
