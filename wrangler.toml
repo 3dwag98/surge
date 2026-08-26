@@ -16,7 +16,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "surge-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "5343368a-ed43-4e02-94f7-c7802b74fa9d"
 migrations_dir = "migrations"
 
 [observability]
