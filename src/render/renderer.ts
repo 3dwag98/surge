@@ -420,15 +420,6 @@ export class Renderer {
     const palette = board();
     const boardW = this.cell * this.cols + this.gap * (this.cols - 1);
 
-    // The top row is where you lose, so it stays lit as a warning.
-    const danger = 0.1 + hud.risePressure * 0.5;
-    ctx.save();
-    ctx.beginPath();
-    roundRect(ctx, this.originX, this.originY, boardW, this.cell, this.cell * 0.16);
-    ctx.fillStyle = palette.danger(danger * 0.2);
-    ctx.fill();
-    ctx.restore();
-
     for (let row = 0; row < this.rows; row += 1) {
       for (let col = 0; col < this.cols; col += 1) {
         ctx.beginPath();
@@ -438,9 +429,9 @@ export class Renderer {
       }
     }
 
-    // The top row is left out of the combo tint on purpose: at a high combo the
-    // tint is nearly the same ink as the danger wash, and letting it reach row 0
-    // would erase the one band the player has to keep reading.
+    // The combo tint warms the room you have left. It stops short of the top
+    // row: at a high combo it is nearly the same ink as the danger wash, and
+    // letting it reach row 0 would erase the one band that has to stay legible.
     if (hud.combo > 1 && !this.reducedMotion) {
       ctx.save();
       ctx.globalAlpha = Math.min(0.1, 0.014 * hud.combo);
@@ -454,6 +445,16 @@ export class Renderer {
       }
       ctx.restore();
     }
+
+    // The ceiling, painted last so nothing can wash it out, and deepening as
+    // the next rise approaches. This is the only thing on the board that can
+    // end the run, so it is always the hottest thing on it.
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, this.originX, this.originY, boardW, this.cell, this.cell * 0.16);
+    ctx.fillStyle = palette.danger(0.1 + hud.risePressure * 0.22);
+    ctx.fill();
+    ctx.restore();
   }
 
   private drawTiles(): void {
