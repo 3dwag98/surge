@@ -192,6 +192,18 @@ either. **That list is exhaustive: any path left off it is handed to the SPA
 fallback and never sees the Worker.** `/api/*` has to be on it or the entire API
 starts answering with `index.html`.
 
+## Crawlers
+
+The site serves a real `robots.txt` and a real `ads.txt` from `public/`, and
+unknown paths return a plain 404.
+
+That last part is the one worth explaining, because it used to be wrong.
+`not_found_handling` was set to `single-page-application`, which answers *every*
+unknown path with the game's HTML and a `200`. Surge is not a single-page
+application — it is one page with no client-side routing — so all that setting
+did was make `/robots.txt` return an HTML document, which is exactly the shape
+that makes a crawler decide a site is broken.
+
 ## What happens under load
 
 The whole thing runs on Cloudflare's free tier, which is a real ceiling rather

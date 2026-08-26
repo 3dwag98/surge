@@ -8,7 +8,11 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+# Not an SPA: one page, no client-side routing. The single-page-application
+# fallback answered *every* unknown path — /robots.txt and /ads.txt included —
+# with the game's HTML and a 200, which is exactly the shape that makes a
+# crawler decide a site is broken. Unknown paths now 404 honestly.
+not_found_handling = "none"
 # Assets are served before the Worker ever runs, which is what we want for JS,
 # CSS and fonts. This list is the exhaustive set of paths that must reach the
 # Worker instead: the API, and the HTML document, which passes through so the

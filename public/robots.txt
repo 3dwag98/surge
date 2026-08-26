@@ -1,0 +1,7 @@
+# Surge is one page and a small JSON API. Everything public is crawlable.
+User-agent: *
+Allow: /
+
+# The API answers with JSON and has nothing to index. It is also rate limited,
+# so crawling it wastes a budget that real players need.
+Disallow: /api/
