@@ -60,6 +60,12 @@ interface FloatingText {
 
 const MAX_PARTICLES = 420;
 
+/** Room reserved above the board for the rise timer, and below it for charge. */
+const TOP_METER = 14;
+const BOTTOM_METER = 10;
+/** Thickness of each meter. */
+const METER_H = 5;
+
 /** Fraction of the remaining distance closed per 16.7ms frame. */
 const EASE_MOVE = 0.34;
 const EASE_SCALE = 0.24;
@@ -124,19 +130,24 @@ export class Renderer {
     this.width = width;
     this.height = height;
 
-    // Fit a cols x rows board into the box, leaving room for the pressure bar.
-    const barSpace = 14;
+    // Two meters bracket the board, each on the edge it is about: the rise
+    // timer runs along the ceiling you are being pushed into, and the charge
+    // meter along the floor the vent blows out.
     const usableW = width;
-    const usableH = height - barSpace;
+    const usableH = height - TOP_METER - BOTTOM_METER;
     this.gap = Math.max(4, Math.min(usableW, usableH) * 0.018);
-    const cellW = (usableW - this.gap * (this.cols + 1)) / this.cols;
-    const cellH = (usableH - this.gap * (this.rows + 1)) / this.rows;
+    // Gaps sit only *between* cells, never around them, so the outer cells run
+    // flush to the edges of the canvas. With no frame drawn any more, that flush
+    // edge is what lines the board up with the HUD above it and the rule above
+    // that — alignment is the only structure left.
+    const cellW = (usableW - this.gap * (this.cols - 1)) / this.cols;
+    const cellH = (usableH - this.gap * (this.rows - 1)) / this.rows;
     this.cell = Math.max(8, Math.min(cellW, cellH));
 
-    const boardW = this.cell * this.cols + this.gap * (this.cols + 1);
-    const boardH = this.cell * this.rows + this.gap * (this.rows + 1);
-    this.originX = (width - boardW) / 2 + this.gap;
-    this.originY = (usableH - boardH) / 2 + this.gap;
+    const boardW = this.cell * this.cols + this.gap * (this.cols - 1);
+    const boardH = this.cell * this.rows + this.gap * (this.rows - 1);
+    this.originX = (width - boardW) / 2;
+    this.originY = TOP_METER + (usableH - boardH) / 2;
   }
 
   /* ------------------------------------------------------------- geometry */
@@ -309,7 +320,14 @@ export class Renderer {
    */
   draw(
     now: number,
-    hud: { risePressure: number; combo: number; comboRemaining: number; charge: number; over: boolean },
+    hud: {
+      risePressure: number;
+      combo: number;
+      comboRemaining: number;
+      charge: number;
+      ventArmed: boolean;
+      over: boolean;
+    },
   ): void {
     const dt = this.lastFrame === 0 ? 16.7 : Math.min(64, now - this.lastFrame);
     this.lastFrame = now;
@@ -334,7 +352,7 @@ export class Renderer {
 
     ctx.restore();
 
-    this.drawPressureBar(hud.risePressure, hud.charge);
+    this.drawMeters(hud.risePressure, hud.charge, hud.ventArmed);
     this.drawFlash();
   }
 
@@ -389,24 +407,25 @@ export class Renderer {
     this.flash *= Math.pow(0.9, step);
   }
 
-  /** The board container: empty cells plus a danger glow along the top row. */
+  /**
+   * The field: empty cells, and the lit band along the row that kills you.
+   *
+   * There is no container drawn behind them. The cells sit straight on the
+   * page, and a climbing combo is shown by warming those cells rather than by
+   * ruling a rectangle around the board — the tiles are drawn over the top, so
+   * the tint only ever shows in the space you have left.
+   */
   private drawWell(hud: { risePressure: number; combo: number; over: boolean }): void {
     const ctx = this.ctx;
     const palette = board();
     const boardW = this.cell * this.cols + this.gap * (this.cols - 1);
-    const boardH = this.cell * this.rows + this.gap * (this.rows - 1);
-
-    ctx.save();
-    ctx.beginPath();
-    roundRect(ctx, this.originX - this.gap, this.originY - this.gap, boardW + this.gap * 2, boardH + this.gap * 2, this.cell * 0.16);
-    ctx.fillStyle = palette.well;
-    ctx.fill();
 
     // The top row is where you lose, so it stays lit as a warning.
     const danger = 0.1 + hud.risePressure * 0.5;
+    ctx.save();
     ctx.beginPath();
-    roundRect(ctx, this.originX - this.gap * 0.5, this.originY - this.gap * 0.5, boardW + this.gap, this.cell + this.gap, this.cell * 0.12);
-    ctx.fillStyle = palette.danger(danger * 0.16);
+    roundRect(ctx, this.originX, this.originY, boardW, this.cell, this.cell * 0.16);
+    ctx.fillStyle = palette.danger(danger * 0.2);
     ctx.fill();
     ctx.restore();
 
@@ -419,15 +438,20 @@ export class Renderer {
       }
     }
 
-    // Combo makes the whole well glow hotter.
+    // The top row is left out of the combo tint on purpose: at a high combo the
+    // tint is nearly the same ink as the danger wash, and letting it reach row 0
+    // would erase the one band the player has to keep reading.
     if (hud.combo > 1 && !this.reducedMotion) {
       ctx.save();
-      ctx.beginPath();
-      roundRect(ctx, this.originX - this.gap, this.originY - this.gap, boardW + this.gap * 2, boardH + this.gap * 2, this.cell * 0.16);
-      ctx.strokeStyle = comboColor(hud.combo, COMBO_MAX);
-      ctx.globalAlpha = 0.28 + Math.min(0.4, hud.combo * 0.05);
-      ctx.lineWidth = 2 + hud.combo * 0.35;
-      ctx.stroke();
+      ctx.globalAlpha = Math.min(0.1, 0.014 * hud.combo);
+      ctx.fillStyle = comboColor(hud.combo, COMBO_MAX);
+      for (let row = 1; row < this.rows; row += 1) {
+        for (let col = 0; col < this.cols; col += 1) {
+          ctx.beginPath();
+          roundRect(ctx, this.cellX(col), this.cellY(row), this.cell, this.cell, this.cell * 0.16);
+          ctx.fill();
+        }
+      }
       ctx.restore();
     }
   }
@@ -543,31 +567,40 @@ export class Renderer {
     ctx.restore();
   }
 
-  /** Rise timer along the bottom, with the charge meter drawn over it. */
-  private drawPressureBar(pressure: number, charge: number): void {
+  /**
+   * The two meters.
+   *
+   * The rise timer sits on the ceiling, directly above the row that kills you,
+   * because that is what it is counting down to. The charge meter sits on the
+   * floor, because a vent blows the floor out. Neither is a decoration on the
+   * edge of a chart — each is drawn on the edge it describes.
+   */
+  private drawMeters(pressure: number, charge: number, ventArmed: boolean): void {
     const ctx = this.ctx;
     const palette = board();
     const boardW = this.cell * this.cols + this.gap * (this.cols - 1);
-    const y = this.height - 8;
-    const h = 5;
 
     ctx.save();
+
+    const riseY = Math.max(2, TOP_METER / 2 - METER_H / 2);
     ctx.beginPath();
-    roundRect(ctx, this.originX, y, boardW, h, h / 2);
+    roundRect(ctx, this.originX, riseY, boardW, METER_H, METER_H / 2);
     ctx.fillStyle = palette.track;
     ctx.fill();
 
     const urgency = Math.min(1, pressure);
     ctx.beginPath();
-    roundRect(ctx, this.originX, y, Math.max(2, boardW * urgency), h, h / 2);
+    roundRect(ctx, this.originX, riseY, Math.max(2, boardW * urgency), METER_H, METER_H / 2);
     ctx.fillStyle = palette.pressure(urgency);
     ctx.fill();
 
-    // Charge sits just above, filling toward a usable vent.
+    // Charge along the floor. A full meter that is not yet re-armed is drawn
+    // hollow rather than solid: it is charged, but it is not a vent yet.
     const chargeRatio = Math.min(1, charge / CHARGE_MAX);
+    const chargeY = this.height - BOTTOM_METER / 2 - 1.5;
     ctx.beginPath();
-    roundRect(ctx, this.originX, y - 8, Math.max(0, boardW * chargeRatio), 3, 1.5);
-    ctx.fillStyle = chargeRatio >= 1 ? palette.chargeFull : palette.chargeIdle;
+    roundRect(ctx, this.originX, chargeY, Math.max(0, boardW * chargeRatio), 3, 1.5);
+    ctx.fillStyle = chargeRatio >= 1 && ventArmed ? palette.chargeFull : palette.chargeIdle;
     ctx.fill();
     ctx.restore();
   }

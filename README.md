@@ -73,12 +73,42 @@ second line is set narrower than its first. Body copy is Figtree; every number,
 label and key is DM Mono, because scores are data. The type scale doubles and is
 named for the tile it doubles like — `--t2` through `--t64`.
 
+**Nothing is in a box.** A riso print is flat areas of ink, not hairline frames,
+so there are no cards, no panels and no frame around the board — structure comes
+from washes, weight and space. A section is a mono label with room under it, a
+control is a filled shape, and the whole page keeps exactly two rules: under the
+masthead and under the scores heading, both on the same measure. That puts the
+weight on alignment, so the board is drawn flush to its own edges — gaps sit
+between cells, never around them — and its left edge lines up with the HUD above
+it and the rule above that.
+
+Losing the frame cost the board two things, both replaced rather than dropped. A
+climbing combo used to be drawn as a rectangle around the well; it now warms the
+empty cells instead, and deliberately skips the top row, because at a high combo
+the tint is nearly the same ink as the danger wash and would erase the one band
+the player has to keep reading.
+
 **Structure encodes the content.** The four mechanics are not steps, so they are
 not numbered 01/02/03; each is labelled with the engine constant that governs it
 (`9.0s → 2.6s`, `Row 1`, `2.6s · 9× cap`, `1 per rise`). The high score table
 *is* ranked, so there rank is set like a result. The page has one measure —
 `--measure` in `src/styles.css` — so the masthead rule, the board, the scores
 rule and the colophon all begin and end together.
+
+## The two meters, and the vent
+
+The board is bracketed by its two clocks, each drawn on the edge it is about.
+The **rise timer** runs along the ceiling, directly above the row that kills you,
+because that is what it is counting down to. The **charge meter** runs along the
+floor, because a vent blows the floor out.
+
+The vent needs saying plainly, because it has three states and they used to look
+like two. Charge fills as you merge, but the valve only re-arms on the next
+rise — so a fast player can refill a full meter and still be locked out. A full
+bar over a dead button is what makes a control read as broken, so the button now
+names the state it is actually in: `Charging 60%`, `Vent ready at the next rise`,
+or `Vent` with its key hint, which only appears when pressing it will do
+something.
 
 The one deliberate imprecision is the wordmark: three ink plates a hair out of
 register, multiplied in light and screened in dark.
@@ -133,6 +163,26 @@ npm run db:migrate
 # 4. Build and ship
 npm run cf:deploy
 ```
+
+### Analytics
+
+Cloudflare Web Analytics is optional and off until you give it a token. Create a
+site under **Analytics & Logs → Web Analytics → Add a site**, then paste the site
+token into `WEB_ANALYTICS_TOKEN` in `wrangler.toml`. It is a public identifier
+rather than a secret — it ships in the page — so it belongs in the config file,
+not in `wrangler secret`.
+
+The beacon is appended by the Worker rather than baked into `index.html`, so a
+deployment with no token serves the page untouched and there is no placeholder
+to forget about. It sets no cookies and collects nothing that needs a consent
+banner.
+
+That injection is the reason for `run_worker_first` in `wrangler.toml`. Static
+assets are normally served before the Worker ever runs, which is what you want
+for JS, CSS and fonts — but it means the HTML document never reaches the Worker
+either. **That list is exhaustive: any path left off it is handed to the SPA
+fallback and never sees the Worker.** `/api/*` has to be on it or the entire API
+starts answering with `index.html`.
 
 ## Scores are verified, not trusted
 
@@ -190,10 +240,10 @@ wrangler.toml         Worker, assets and D1 bindings
 migrations/           D1 schema (0003 drops the retired paid board)
 src/
   main.ts             run lifecycle, input, frame loop
-  styles.css          riso tokens and one shared measure, light and dark
+  styles.css          riso tokens, one shared measure, no boxes, light and dark
   game/engine.ts      all the rules — no DOM, injected time, seeded RNG
   game/rng.ts         deterministic mulberry32
-  render/renderer.ts  canvas: tweening, particles, shake, pressure bar
+  render/renderer.ts  canvas: tweening, particles, shake, the two meters
   render/palette.ts   the ink drawer: every colour the board paints, both themes
   ui/                 attract, tutorial, leaderboard, podium, theme, agent API
   net/api.ts          worker client

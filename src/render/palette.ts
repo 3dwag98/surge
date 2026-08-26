@@ -81,8 +81,6 @@ export function comboColor(combo: number, max: number): string {
 }
 
 export interface BoardPalette {
-  /** The well behind the cells. */
-  well: string;
   /** An empty cell. */
   cell: string;
   /** An empty cell in the lethal top row. */
@@ -107,7 +105,6 @@ export interface BoardPalette {
 }
 
 const LIGHT: BoardPalette = {
-  well: 'rgba(255, 255, 255, 0.58)',
   cell: 'rgba(34, 33, 43, 0.055)',
   cellDanger: 'rgba(255, 95, 162, 0.13)',
   danger: (alpha) => `rgba(255, 95, 162, ${alpha})`,
@@ -123,7 +120,6 @@ const LIGHT: BoardPalette = {
 };
 
 const DARK: BoardPalette = {
-  well: 'rgba(255, 255, 255, 0.04)',
   cell: 'rgba(255, 255, 255, 0.055)',
   cellDanger: 'rgba(255, 120, 176, 0.14)',
   danger: (alpha) => `rgba(255, 120, 176, ${alpha})`,

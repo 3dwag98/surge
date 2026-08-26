@@ -3,12 +3,18 @@ main = "worker/index.ts"
 compatibility_date = "2025-08-01"
 compatibility_flags = ["nodejs_compat"]
 
-# The built client. The Worker sits in front and only handles /api/*,
-# handing everything else to these assets.
+# The built client. The Worker handles /api/* and the HTML document; every
+# other file is served straight from here without waking it.
 [assets]
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+# Assets are served before the Worker ever runs, which is what we want for JS,
+# CSS and fonts. This list is the exhaustive set of paths that must reach the
+# Worker instead: the API, and the HTML document, which passes through so the
+# analytics beacon can be appended to it. Anything left off this list is handed
+# to the SPA fallback and never sees the Worker at all.
+run_worker_first = ["/", "/index.html", "/api/*"]
 
 # Leaderboard storage.
 # Create it once with:  npx wrangler d1 create surge-db
@@ -18,6 +24,13 @@ binding = "DB"
 database_name = "surge-db"
 database_id = "5343368a-ed43-4e02-94f7-c7802b74fa9d"
 migrations_dir = "migrations"
+
+[vars]
+# Cloudflare Web Analytics. Create a site at
+#   Cloudflare dashboard -> Analytics & Logs -> Web Analytics -> Add a site
+# and paste the site token here. It is a public identifier, not a secret: it
+# ships in the page. Leave it empty and no beacon is injected at all.
+WEB_ANALYTICS_TOKEN = ""
 
 [observability]
 enabled = true

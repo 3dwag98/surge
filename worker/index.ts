@@ -24,6 +24,11 @@ import {
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  /**
+   * Cloudflare Web Analytics site token. Optional: with no token the beacon is
+   * never injected and the page ships exactly as built.
+   */
+  WEB_ANALYTICS_TOKEN?: string;
 }
 
 /** A run ticket expires if it is not submitted; stops seeds being farmed. */
@@ -207,7 +212,9 @@ app.post('/api/runs/:id/finish', async (c) => {
 
 /* ------------------------------------------------------------------ misc */
 
-app.get('/api/health', (c) => c.json({ ok: true, time: nowIso() }));
+app.get('/api/health', (c) =>
+  c.json({ ok: true, analytics: Boolean(c.env.WEB_ANALYTICS_TOKEN), time: nowIso() }),
+);
 
 app.all('/api/*', (c) => c.json({ error: 'unknown endpoint' }, 404));
 
@@ -217,7 +224,33 @@ app.onError((error, c) => {
   return c.json({ error: 'internal error' }, 500);
 });
 
-/** Everything that is not /api is the built client. */
-app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));
+/**
+ * Everything that is not /api is the built client.
+ *
+ * HTML gets the Cloudflare Web Analytics beacon appended on the way out, when a
+ * site token is configured. Injecting here rather than in index.html keeps the
+ * token out of the repository and off every non-HTML response, and means a
+ * deployment without one serves the page untouched — there is no placeholder to
+ * forget about. The beacon sets no cookies and collects nothing that would need
+ * a consent banner.
+ */
+app.all('*', async (c) => {
+  const response = await c.env.ASSETS.fetch(c.req.raw);
+  const token = c.env.WEB_ANALYTICS_TOKEN;
+  if (!token || !/^[a-f0-9]{8,64}$/i.test(token)) return response;
+  if (!response.headers.get('content-type')?.includes('text/html')) return response;
+
+  return new HTMLRewriter()
+    .on('body', {
+      element(element) {
+        element.append(
+          `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" ` +
+            `data-cf-beacon='{"token":"${token}"}'></script>`,
+          { html: true },
+        );
+      },
+    })
+    .transform(response);
+});
 
 export default app;

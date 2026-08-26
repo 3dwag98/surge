@@ -57,6 +57,8 @@ const els = {
   combo: $('#combo'),
   level: $('#level'),
   vent: $<HTMLButtonElement>('#vent'),
+  ventLabel: $('#vent-label'),
+  ventKey: $('#vent-key'),
   newGame: $<HTMLButtonElement>('#new-game'),
   howTo: $<HTMLButtonElement>('#how-to'),
   status: $('#board-status'),
@@ -295,7 +297,7 @@ function applyVent(): void {
   renderer.applyGhosts(result.removed);
   renderer.sync(game.tiles);
   renderer.onVent();
-  announce('Vented. The board dropped and the timer reset.');
+  announce('Vented. The board dropped a row; the rise timer keeps running.');
   afterStateChange(at);
 }
 
@@ -354,9 +356,38 @@ function updateHud(state: GameState): void {
 
   els.level.textContent = String(state.level);
 
+  updateVent(state);
+}
+
+/**
+ * The vent has three states and they must not look alike.
+ *
+ * A full meter is not the same thing as an available vent: the valve only
+ * re-arms on the next rise, so a fast player can refill the charge and still be
+ * locked out. Showing a full bar on a dead button is what makes the control
+ * read as broken, so the label names the state it is actually in.
+ */
+function updateVent(state: GameState): void {
+  const ratio = Math.min(1, state.charge / CHARGE_MAX);
+  const charged = ratio >= 1;
+  const status: 'charging' | 'locked' | 'ready' = !charged
+    ? 'charging'
+    : state.ventArmed
+      ? 'ready'
+      : 'locked';
+
   els.vent.disabled = !state.canVent;
-  els.vent.classList.toggle('is-ready', state.canVent);
-  els.vent.style.setProperty('--charge', String(Math.min(1, state.charge / CHARGE_MAX)));
+  els.vent.dataset.state = status;
+  els.vent.style.setProperty('--charge', String(ratio));
+
+  els.ventLabel.textContent =
+    status === 'ready'
+      ? 'Vent'
+      : status === 'locked'
+        ? 'Vent ready at the next rise'
+        : `Charging ${Math.round(ratio * 100)}%`;
+  // The key hint is a lie on a button that cannot fire.
+  els.ventKey.hidden = status !== 'ready';
 }
 
 function announce(message: string): void {
@@ -463,6 +494,7 @@ function frame(): void {
     combo: state.combo,
     comboRemaining: state.comboRemaining,
     charge: state.charge,
+    ventArmed: state.ventArmed,
     over: state.status === 'over',
   });
   // The combo ring drains continuously, so refresh it every frame.

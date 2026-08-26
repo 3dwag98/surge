@@ -111,7 +111,7 @@
         </div>
 
         <div class="board-wrap">
-          <canvas id="board" width="520" height="560" aria-label="Surge game board"></canvas>
+          <canvas id="board" width="520" height="544" aria-label="Surge game board"></canvas>
 
           <!-- ------------------------------------------------ attract mode -->
           <div class="attract" id="attract" hidden>
@@ -171,8 +171,8 @@
         <div class="deck">
           <button type="button" class="vent" id="vent" disabled>
             <span class="vent-fill" aria-hidden="true"></span>
-            <span class="vent-label">Vent</span>
-            <kbd>Space</kbd>
+            <span class="vent-label" id="vent-label">Charging 0%</span>
+            <kbd class="vent-key" id="vent-key" hidden>Space</kbd>
           </button>
           <button type="button" class="btn" id="new-game">New run</button>
           <p class="deck-hint">
