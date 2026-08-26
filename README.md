@@ -175,8 +175,10 @@ npm run cf:deploy
 Cloudflare Web Analytics is optional and off until you give it a token. Create a
 site under **Analytics & Logs → Web Analytics → Add a site**, then paste the site
 token into `WEB_ANALYTICS_TOKEN` in `wrangler.toml`. It is a public identifier
-rather than a secret — it ships in the page — so it belongs in the config file,
-not in `wrangler secret`.
+rather than a secret — it ships in the page of every visitor — so it belongs in
+the config file, not in `wrangler secret`. `GET /api/health` reports whether a
+token is configured, which is the quickest way to tell whether a deployment is
+being measured.
 
 The beacon is appended by the Worker rather than baked into `index.html`, so a
 deployment with no token serves the page untouched and there is no placeholder

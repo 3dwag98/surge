@@ -30,7 +30,7 @@ migrations_dir = "migrations"
 #   Cloudflare dashboard -> Analytics & Logs -> Web Analytics -> Add a site
 # and paste the site token here. It is a public identifier, not a secret: it
 # ships in the page. Leave it empty and no beacon is injected at all.
-WEB_ANALYTICS_TOKEN = ""
+WEB_ANALYTICS_TOKEN = "f76cf0d60ef5460197179cadbfd2f49b"
 
 # Rate limits, so one storm of requests cannot spend the whole day's free-tier
 # allowance in a couple of minutes. These are per-colo and best effort, which is
