@@ -1,5 +1,5 @@
 /**
- * The public board. Free to enter: play well and you are on it.
+ * The high-score table. Free to enter: play well and you are on it.
  */
 
 import { api } from '../net/api.js';
@@ -22,14 +22,20 @@ export class LeaderboardView {
     return this.rows;
   }
 
-  async refresh(): Promise<void> {
+  /**
+   * Reload the table. The podium comes back on the same response, and is
+   * returned rather than rendered here so this view owns only the table.
+   */
+  async refresh(): Promise<ScoreRow[]> {
     try {
-      const { scores } = await api.scores();
+      const { scores, podium } = await api.scores();
       this.rows = scores;
       this.render();
       this.els.status.textContent = '';
+      return podium;
     } catch {
       this.els.status.textContent = 'Scores are offline right now.';
+      return [];
     }
   }
 

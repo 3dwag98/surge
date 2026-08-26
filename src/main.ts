@@ -14,8 +14,9 @@ import type { Direction, GameState } from './game/types.js';
 import { Renderer } from './render/renderer.js';
 import { api } from './net/api.js';
 import { installAgentApi, type InstalledAgentApi } from './ui/agent.js';
-import { BoardController, type BoardElements } from './ui/board.js';
 import { LeaderboardView, formatNumber } from './ui/leaderboard.js';
+import { Podium } from './ui/podium.js';
+import { ThemeController } from './ui/theme.js';
 import { Tutorial } from './ui/tutorial.js';
 import { encodeActions, type Action } from '../shared/replay.js';
 import { sanitizeName } from '../shared/rules.js';
@@ -64,7 +65,6 @@ const els = {
   overlayStats: $('#overlay-stats'),
   saveForm: $<HTMLFormElement>('#save-form'),
   playerName: $<HTMLInputElement>('#player-name'),
-  playerUrl: $<HTMLInputElement>('#player-url'),
   scoresCount: $('#scores-count'),
   saveButton: $<HTMLButtonElement>('#save-score'),
   saveStatus: $('#save-status'),
@@ -78,33 +78,12 @@ const leaderboard = new LeaderboardView({
   status: $('#leaderboard-status'),
 });
 
-const board = new BoardController({
-  heroPrice: $('#hero-price'),
-  heroDown: $<HTMLButtonElement>('#hero-down'),
-  heroUp: $<HTMLButtonElement>('#hero-up'),
-  heroEntry: $('#hero-entry'),
-  heroUrl: $<HTMLInputElement>('#hero-url'),
-  heroGo: $<HTMLButtonElement>('#hero-go'),
+const podium = new Podium($('#podium'));
 
-  list: $('#board-list'),
-  empty: $('#board-empty'),
-  status: $('#board-status-msg'),
-  count: $('#board-count'),
-
-  sideSlots: $('#side-slots'),
-
-  dialog: $<HTMLDialogElement>('#claim-dialog'),
-  form: $<HTMLFormElement>('#claim-form'),
-  inputTitle: $<HTMLInputElement>('#claim-title'),
-  inputTagline: $<HTMLInputElement>('#claim-tagline'),
-  inputUrl: $<HTMLInputElement>('#claim-url'),
-  inputName: $<HTMLInputElement>('#claim-name'),
-  inputAmount: $<HTMLInputElement>('#claim-amount'),
-  note: $('#claim-note'),
-  claimStatus: $('#claim-status'),
-  paypalMount: $('#paypal-buttons'),
-  closeButton: $<HTMLButtonElement>('#claim-close'),
-} satisfies BoardElements);
+new ThemeController({
+  toggle: $<HTMLButtonElement>('#theme-toggle'),
+  meta: document.querySelector<HTMLMetaElement>('#theme-color'),
+});
 
 const tutorial = new Tutorial({
   root: $('#tutorial'),
@@ -342,20 +321,19 @@ async function submitScore(event: Event): Promise<void> {
       name,
       log: encodeActions(actions),
       durationMs: Math.round(runEndedAt),
-      url: els.playerUrl.value.trim() || null,
     });
 
     submitted = true;
     safeSet(NAME_KEY, name);
     leaderboard.setRows(outcome.scores);
     leaderboard.highlight(outcome.entry.id);
-    // A posted run can change who holds the earned slots, so refresh them here
-    // rather than making the player reload to see it.
-    board.setSideSlots(outcome.sideSlots);
+    // A posted run can change the podium, so refresh it here rather than
+    // making the player reload to see it.
+    podium.setRows(outcome.podium);
     els.scoresCount.textContent = String(outcome.scores.length);
     els.saveForm.hidden = true;
-    els.overlayStats.textContent = outcome.wonSideSlot
-      ? `${formatNumber(outcome.verifiedScore)} points — #${outcome.rank}, and you took an earned slot.`
+    els.overlayStats.textContent = outcome.wonPodium
+      ? `${formatNumber(outcome.verifiedScore)} points — #${outcome.rank}, and you are on the podium.`
       : outcome.rank
         ? `${formatNumber(outcome.verifiedScore)} points — #${outcome.rank} on the board.`
         : `${formatNumber(outcome.verifiedScore)} points. Not a top ${leaderboard.entries.length} run this time.`;
@@ -488,8 +466,8 @@ async function boot(): Promise<void> {
   els.playerName.value = safeGet(NAME_KEY) ?? '';
   els.best.textContent = formatNumber(best);
 
-  void board.refresh();
-  void leaderboard.refresh().then(() => {
+  void leaderboard.refresh().then((rows) => {
+    podium.setRows(rows);
     els.scoresCount.textContent = String(leaderboard.entries.length);
   });
 

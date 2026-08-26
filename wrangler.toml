@@ -10,7 +10,7 @@ directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
-# Leaderboard + banner storage.
+# Leaderboard storage.
 # Create it once with:  npx wrangler d1 create surge-db
 # then paste the database_id it prints in below.
 [[d1_databases]]
@@ -19,15 +19,5 @@ database_name = "surge-db"
 database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 migrations_dir = "migrations"
 
-[vars]
-# Payments are optional: with no PayPal credentials the banner is read-only
-# and the rest of the site works normally.
-PAYPAL_ENVIRONMENT = "sandbox"
-CURRENCY = "USD"
-
-# Secrets are NOT set here — they would end up in git. Set them with:
-#   npx wrangler secret put PAYPAL_CLIENT_ID
-#   npx wrangler secret put PAYPAL_CLIENT_SECRET
-#   npx wrangler secret put PAYPAL_WEBHOOK_ID
 [observability]
 enabled = true

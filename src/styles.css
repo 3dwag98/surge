@@ -1,48 +1,95 @@
 /**
  * Surge — the shell.
  *
- * Warm light page, coral accent, one dark panel for the game. The canvas
- * renderer paints its own near-black world and is tuned against it, so rather
- * than fight that the board sits in the page as a lit screen would: a dark
- * rectangle on a paper-coloured desk.
+ * A pastel page in two themes. Every colour is a token on :root, and dark mode
+ * redefines the tokens rather than restyling components, so a rule written once
+ * is correct in both. `data-theme` on <html> is the switch — set before first
+ * paint by the inline script in index.html and owned after that by
+ * src/ui/theme.ts.
+ *
+ * The canvas cannot read these variables, so the board's own colours live in
+ * src/render/palette.ts and are swapped from the same place.
  */
 
 /* ------------------------------------------------------------------ tokens */
 
 :root {
-  --paper: #f2f9f6;
+  color-scheme: light;
+
+  --paper: #f7f4fb;
+  --paper-tint: #efeafa;
   --card: #ffffff;
-  --mint: #dcf4e9;
-  --mint-line: #a5e0c8;
 
-  --accent: #06bf7f;
-  --accent-deep: #048a5c;
-  --accent-wash: #e9faf2;
+  --accent: #8b7ae8; /* lavender */
+  --accent-deep: #6a56d1;
+  --accent-soft: #efeafd;
 
-  --ink: #0b1f18;
-  --ink-soft: #32473f;
-  --muted: #6b8079;
-  --faint: #93a8a1;
+  --mint: #7fceb2;
+  --mint-soft: #e4f6ee;
+  --rose: #ef94b4;
+  --rose-soft: #fdeaf1;
+  --butter-soft: #fdf3e0;
 
-  --line: #e0efe8;
-  --line-strong: #cce3d9;
+  --ink: #2b2540;
+  --ink-soft: #4d4569;
+  --muted: #6f6790;
+  --faint: #9a93b5;
 
-  /* The board is light now too, so this is a surround rather than a void. */
-  --panel: #e6f5ef;
-  --panel-line: #c6e4d7;
+  --line: #ece7f6;
+  --line-strong: #ddd5ee;
 
-  --radius-lg: 18px;
+  /* The surround the board sits in. */
+  --panel: #efeafa;
+  --panel-line: #ddd5ee;
+  /* The wash over the board while an overlay is up. */
+  --scrim: rgb(239 234 250 / 0.86);
+
+  --radius-lg: 20px;
   --radius: 14px;
   --radius-sm: 10px;
 
-  --shadow-sm: 0 1px 2px rgb(11 31 24 / 0.05);
-  --shadow: 0 6px 20px -8px rgb(11 31 24 / 0.12);
-  --shadow-lg: 0 20px 50px -18px rgb(11 31 24 / 0.20);
+  --shadow-sm: 0 1px 2px rgb(43 37 64 / 0.06);
+  --shadow: 0 8px 24px -10px rgb(43 37 64 / 0.16);
+  --shadow-lg: 0 24px 56px -22px rgb(43 37 64 / 0.3);
 
   --sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --paper: #16151f;
+  --paper-tint: #1c1a28;
+  --card: #1f1d2c;
+
+  --accent: #b8a9f0;
+  --accent-deep: #d0c5ff;
+  --accent-soft: #2a2540;
+
+  --mint: #8fdcbe;
+  --mint-soft: #1e3230;
+  --rose: #f2a5c0;
+  --rose-soft: #33222c;
+  --butter-soft: #322a1f;
+
+  --ink: #efebfa;
+  --ink-soft: #cbc4e0;
+  --muted: #9e97b8;
+  --faint: #7d7699;
+
+  --line: #2b2839;
+  --line-strong: #3b3652;
+
+  --panel: #1a1826;
+  --panel-line: #2f2b41;
+  --scrim: rgb(22 21 31 / 0.86);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow: 0 8px 24px -10px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 24px 56px -22px rgb(0 0 0 / 0.7);
 }
 
 /* -------------------------------------------------------------- structure */
@@ -60,7 +107,11 @@ html {
 
 body {
   margin: 0;
-  background: var(--paper);
+  /* Two faint pastel pools behind the page, so the flat paper has some depth. */
+  background:
+    radial-gradient(60rem 32rem at 12% -8%, var(--accent-soft), transparent 60%),
+    radial-gradient(50rem 28rem at 92% 4%, var(--mint-soft), transparent 62%), var(--paper);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--sans);
   font-size: 15px;
@@ -138,12 +189,21 @@ a {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: #ffffff;
   box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme='dark'] .btn-primary {
+  /* The lavender is light in dark mode, so the label has to invert with it. */
+  color: #241f38;
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-deep);
+}
+
+:root[data-theme='dark'] .btn-primary:hover:not(:disabled) {
+  color: #1c1830;
 }
 
 .btn-ghost {
@@ -153,13 +213,42 @@ a {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  border-color: var(--faint);
+  border-color: var(--accent);
   color: var(--ink);
 }
 
 .btn-lg {
   padding: 13px 30px;
   font-size: 0.95rem;
+}
+
+/* The theme switch: one button, showing whichever side you are heading for. */
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-color: var(--line-strong);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.btn-icon:hover {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+.theme-icon-moon {
+  display: none;
+}
+
+:root[data-theme='dark'] .theme-icon-sun {
+  display: none;
+}
+
+:root[data-theme='dark'] .theme-icon-moon {
+  display: inline;
 }
 
 kbd {
@@ -184,9 +273,9 @@ kbd {
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 22px;
-  padding: 14px clamp(16px, 4vw, 40px);
-  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  gap: 10px;
+  padding: 12px clamp(16px, 4vw, 40px);
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
@@ -195,6 +284,7 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 9px;
+  margin-right: auto;
   font-weight: 800;
   font-size: 1.02rem;
   letter-spacing: -0.03em;
@@ -204,19 +294,14 @@ kbd {
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  background: linear-gradient(150deg, var(--accent), #6ee7b7);
-  box-shadow: inset 0 -2px 5px rgb(0 0 0 / 0.16);
-}
-
-.brand-dot {
-  color: var(--faint);
-  font-weight: 600;
+  background: linear-gradient(150deg, var(--accent), var(--rose) 55%, var(--mint));
+  box-shadow: inset 0 -2px 5px rgb(0 0 0 / 0.12);
 }
 
 .topnav {
   display: flex;
   gap: 4px;
-  margin-left: auto;
+  margin-right: 6px;
 }
 
 .topnav a {
@@ -231,16 +316,16 @@ kbd {
 }
 
 .topnav a:hover {
-  background: var(--accent-wash);
+  background: var(--accent-soft);
   color: var(--accent-deep);
 }
 
 /* ------------------------------------------------------------------ hero */
 
 .hero {
-  max-width: 780px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: clamp(34px, 6vw, 66px) 20px clamp(24px, 4vw, 38px);
+  padding: clamp(32px, 6vw, 62px) 20px clamp(22px, 4vw, 34px);
   text-align: center;
 }
 
@@ -266,121 +351,62 @@ kbd {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 3px rgb(34 197 94 / 0.18);
+  background: var(--mint);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint) 30%, transparent);
 }
 
 .hero-title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 22px 0 12px;
-  font-size: clamp(2.1rem, 6.4vw, 3.65rem);
+  margin: 20px 0 14px;
+  font-size: clamp(2.1rem, 6.4vw, 3.5rem);
   font-weight: 800;
   letter-spacing: -0.045em;
-  line-height: 1.04;
+  line-height: 1.06;
 }
 
-.hero-price {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.stepper {
-  display: inline-grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--mint);
-  color: var(--accent-deep);
-  font: inherit;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color 0.16s ease;
-}
-
-.stepper:hover {
-  background: var(--mint-line);
+.hero-title em {
+  font-style: normal;
+  background: linear-gradient(96deg, var(--accent), var(--rose));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 .hero-sub {
-  max-width: 52ch;
+  max-width: 56ch;
   margin: 0 auto;
   color: var(--muted);
   font-size: 0.95rem;
 }
 
-.hero-lead {
-  color: var(--accent-deep);
-}
-
-.hero-form {
+.hero-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  margin-top: 26px;
-}
-
-.field {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex: 1 1 320px;
-  max-width: 430px;
-  padding: 0 16px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.16s ease;
-}
-
-.field:focus-within {
-  border-color: var(--accent);
-}
-
-.field-icon {
-  font-size: 0.85rem;
-  opacity: 0.5;
-}
-
-.field input {
-  flex: 1;
-  min-width: 0;
-  padding: 13px 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 0.95rem;
-}
-
-.field input:focus {
-  outline: none;
+  margin-top: 24px;
 }
 
 /* ---------------------------------------------------------------- layout */
 
 .layout {
   display: grid;
-  grid-template-columns: 232px minmax(0, 560px) 1fr;
-  gap: clamp(16px, 2.4vw, 30px);
+  grid-template-columns: minmax(0, 560px) 292px;
+  justify-content: center;
+  gap: clamp(16px, 2.4vw, 28px);
   align-items: start;
-  max-width: 1420px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 8px clamp(16px, 4vw, 40px) 40px;
 }
 
-/* ----------------------------------------------------------------- rails */
+/* ------------------------------------------------------------------ rail */
 
 .rail {
+  display: grid;
+  gap: 14px;
+}
+
+.rail-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--card);
@@ -422,153 +448,98 @@ kbd {
   font-size: 0.85rem;
 }
 
-.rail-status:empty {
+.rail-status:empty,
+.rail-empty[hidden] {
   display: none;
 }
 
-/* -------------------------------------------------------- earned slots */
+/* ---------------------------------------------------------------- podium */
 
-.slots {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.podium {
+  display: grid;
+  gap: 9px;
 }
 
-.slots:empty::after {
-  content: 'Nobody has earned one yet. Post a top-3 run and it is yours.';
+.podium:empty::after {
+  content: 'Nobody has posted a run yet. The top three land here.';
   color: var(--muted);
   font-size: 0.85rem;
 }
 
-.slot {
+.place {
   display: grid;
-  gap: 2px;
-  padding: 12px 14px;
-  border: 1px dashed var(--mint-line);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: linear-gradient(160deg, var(--accent-wash), var(--card));
+  background: var(--paper-tint);
 }
 
-.slot-rank {
-  color: var(--accent-deep);
-  font-size: 0.68rem;
+/* Gold, silver, bronze — pastel, and only as a tint. */
+.place[data-rank='1'] {
+  background: var(--butter-soft);
+  border-color: color-mix(in srgb, #e9c46a 40%, transparent);
+}
+
+.place[data-rank='2'] {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.place[data-rank='3'] {
+  background: var(--rose-soft);
+  border-color: color-mix(in srgb, var(--rose) 30%, transparent);
+}
+
+.place-rank {
+  grid-row: 1 / span 2;
+  align-self: center;
+  min-width: 30px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 
-.slot-name {
+.place-name {
   font-weight: 650;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   overflow-wrap: anywhere;
 }
 
-.slot-name a {
-  border-bottom: 1px solid var(--mint-line);
-}
-
-.slot-name a:hover {
-  color: var(--accent-deep);
-}
-
-.slot-score {
-  color: var(--muted);
+.place-score {
+  grid-column: 2;
+  color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
 }
 
-/* ------------------------------------------------------------- listings */
+.place-meta {
+  grid-column: 2;
+  color: var(--faint);
+  font-size: 0.72rem;
+}
 
-.listings {
-  display: flex;
-  flex-direction: column;
+/* ----------------------------------------------------------------- rules */
+
+.rules {
+  display: grid;
+  gap: 12px;
   margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
-.listing {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 13px 6px;
-  border-bottom: 1px solid var(--line);
-}
-
-.listing:last-child {
-  border-bottom: 0;
-}
-
-/* Only the winner gets the filled card; the rest are quiet rows. */
-.listing.is-top {
-  margin-bottom: 6px;
-  padding: 15px 16px;
-  border: 1px solid var(--mint-line);
-  border-radius: var(--radius);
-  background: var(--mint);
-}
-
-.listing-rank {
-  min-width: 34px;
-  color: var(--faint);
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  text-align: center;
-}
-
-.listing.is-top .listing-rank {
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-}
-
-.listing-body {
-  min-width: 0;
-}
-
-.listing-title {
-  display: block;
+.rule dt {
   font-weight: 650;
-  font-size: 0.95rem;
-  overflow-wrap: anywhere;
+  font-size: 0.86rem;
 }
 
-.listing-title:hover {
-  color: var(--accent-deep);
-}
-
-.listing-tagline {
-  margin-top: 1px;
+.rule dd {
+  margin: 2px 0 0;
   color: var(--muted);
-  font-size: 0.85rem;
-  overflow-wrap: anywhere;
-}
-
-.listing-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 4px;
-  color: var(--faint);
-  font-size: 0.755rem;
-}
-
-.listing-host {
-  font-family: var(--mono);
-}
-
-.listing-price {
-  color: var(--ink);
-  font-weight: 700;
-  font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.listing.is-top .listing-price {
-  color: var(--accent-deep);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 /* ----------------------------------------------------------------- stage */
@@ -622,7 +593,7 @@ kbd {
 }
 
 .stat-combo .stat-value.is-hot {
-  color: var(--accent);
+  color: var(--accent-deep);
 }
 
 .board-wrap {
@@ -661,7 +632,7 @@ kbd {
   position: absolute;
   inset: 0 auto 0 0;
   width: 100%;
-  background: var(--mint);
+  background: var(--mint-soft);
   transform: scaleX(var(--charge, 0));
   transform-origin: left;
   transition: transform 0.14s linear;
@@ -672,8 +643,8 @@ kbd {
 }
 
 .btn-vent.is-ready {
-  border-color: var(--accent);
-  color: var(--accent-deep);
+  border-color: var(--mint);
+  color: var(--ink);
 }
 
 .controls-hint {
@@ -704,7 +675,7 @@ kbd {
   display: grid;
   place-items: center;
   padding: 22px;
-  background: rgb(233 247 241 / 0.86);
+  background: var(--scrim);
   backdrop-filter: blur(6px);
 }
 
@@ -749,11 +720,6 @@ kbd {
   font-weight: 600;
 }
 
-.save-optional span {
-  color: var(--faint);
-  font-weight: 400;
-}
-
 .save-row {
   display: flex;
   gap: 7px;
@@ -764,38 +730,33 @@ kbd {
   min-width: 0;
 }
 
-.save-form input,
-.dialog-form input {
+.save-form input {
   padding: 10px 13px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  background: var(--paper);
+  background: var(--paper-tint);
   color: inherit;
   font: inherit;
   font-size: 0.9rem;
 }
 
-.save-form input:focus,
-.dialog-form input:focus {
+.save-form input:focus {
   outline: none;
   border-color: var(--accent);
   background: var(--card);
 }
 
-.save-status,
-.dialog-status {
+.save-status {
   color: var(--muted);
   font-size: 0.8rem;
 }
 
-.save-status:empty,
-.dialog-status:empty {
+.save-status:empty {
   display: none;
 }
 
-.save-status.is-error,
-.dialog-status.is-error {
-  color: var(--accent-deep);
+.save-status.is-error {
+  color: var(--rose);
 }
 
 .tutorial-body {
@@ -820,7 +781,7 @@ kbd {
 }
 
 .tutorial-dot.is-done {
-  background: var(--mint-line);
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .tutorial-dot.is-current {
@@ -849,7 +810,7 @@ kbd {
 /* ----------------------------------------------------------- high scores */
 
 .scores {
-  max-width: 1420px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 clamp(16px, 4vw, 40px) 44px;
 }
@@ -860,8 +821,14 @@ kbd {
   gap: 12px;
 }
 
+/* A narrow phone scrolls the table rather than the whole page sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
+
 .leaderboard {
   width: 100%;
+  min-width: 460px;
   border-collapse: collapse;
   font-size: 0.88rem;
 }
@@ -913,11 +880,11 @@ kbd {
 }
 
 .leaderboard tr.is-leader td {
-  background: var(--mint);
+  background: var(--butter-soft);
 }
 
 .leaderboard tr.is-leader .col-rank {
-  color: var(--accent-deep);
+  color: var(--ink-soft);
   font-weight: 700;
 }
 
@@ -929,103 +896,10 @@ kbd {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--accent-wash);
+  background: var(--accent-soft);
   color: var(--accent-deep);
   font-family: var(--mono);
   font-size: 0.72rem;
-}
-
-/* ---------------------------------------------------------------- dialog */
-
-.dialog {
-  width: min(94vw, 430px);
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: var(--shadow-lg);
-}
-
-.dialog::backdrop {
-  background: rgb(11 31 24 / 0.38);
-  backdrop-filter: blur(3px);
-}
-
-.dialog-form {
-  display: grid;
-  gap: 7px;
-  padding: 20px;
-}
-
-.dialog-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.dialog-head h2 {
-  font-size: 1.2rem;
-}
-
-.dialog-close {
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--paper);
-  color: var(--muted);
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.dialog-close:hover {
-  background: var(--mint);
-  color: var(--accent-deep);
-}
-
-.dialog-form label {
-  margin-top: 5px;
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.opt {
-  color: var(--faint);
-  font-weight: 400;
-}
-
-.dialog-note {
-  padding: 9px 13px;
-  border-radius: var(--radius-sm);
-  background: var(--paper);
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.dialog-note.is-top {
-  background: var(--mint);
-  color: var(--accent-deep);
-  font-weight: 600;
-}
-
-.paypal-mount {
-  min-height: 44px;
-  margin-top: 14px;
-}
-
-.dialog-fineprint {
-  color: var(--faint);
-  font-size: 0.74rem;
-  line-height: 1.5;
-}
-
-.dialog-fineprint code {
-  font-family: var(--mono);
-  font-size: 0.92em;
 }
 
 /* -------------------------------------------------------------- colophon */
@@ -1042,32 +916,13 @@ kbd {
 
 /* ------------------------------------------------------------ responsive */
 
-@media (max-width: 1180px) {
+@media (max-width: 960px) {
   .layout {
-    grid-template-columns: minmax(0, 560px) 1fr;
-  }
-
-  /* The earned slots go under the game rather than squeezing the board. */
-  .rail-left {
-    grid-column: 1 / -1;
-    order: 3;
-  }
-
-  .slots {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .slot {
-    flex: 1 1 190px;
+    grid-template-columns: minmax(0, 560px);
   }
 }
 
 @media (max-width: 860px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .topnav {
     display: none;
   }

@@ -1,27 +1,12 @@
 /**
  * Thin client for the Worker API.
  *
- * Every call degrades rather than throwing at the UI: if the board is
+ * Every call degrades rather than throwing at the UI: if the leaderboard is
  * unreachable the game still plays, it just cannot post a score. That matters
  * because the game is the product and the network is not.
  */
 
-import type { Listing, ScoreRow } from '../../shared/rules.js';
-
-export interface BoardInfo {
-  /** Paid listings, best-paid first. */
-  listings: Listing[];
-  /** Earned slots, held by the top scores. Money cannot buy these. */
-  sideSlots: ScoreRow[];
-  /** What #1 costs right now. */
-  topSpotCents: number;
-  /** What any seat on the board costs. */
-  entryCents: number;
-  /** Null when PayPal is not configured on the server. */
-  paypalClientId: string | null;
-  paypalEnvironment: 'sandbox' | 'live' | null;
-  currency: string;
-}
+import type { ScoreRow } from '../../shared/rules.js';
 
 export interface RunTicket {
   runId: string;
@@ -32,17 +17,12 @@ export interface SubmitOutcome {
   rank: number | null;
   entry: ScoreRow;
   scores: ScoreRow[];
-  sideSlots: ScoreRow[];
-  /** True when this run was good enough to take one of the earned slots. */
-  wonSideSlot: boolean;
+  /** The three best runs after this one landed. */
+  podium: ScoreRow[];
+  /** True when this run was good enough to take a place on the podium. */
+  wonPodium: boolean;
   /** The score the server derived by replaying the run. */
   verifiedScore: number;
-}
-
-export interface ClaimOutcome {
-  listing: Listing;
-  listings: Listing[];
-  rank: number | null;
 }
 
 export class ApiError extends Error {
@@ -102,38 +82,12 @@ export const api = {
    */
   finishRun(
     runId: string,
-    payload: { name: string; log: string; durationMs: number; url?: string | null },
+    payload: { name: string; log: string; durationMs: number },
   ): Promise<SubmitOutcome> {
-    return request<SubmitOutcome>(
-      `/api/runs/${encodeURIComponent(runId)}/finish`,
-      json(payload),
-    );
+    return request<SubmitOutcome>(`/api/runs/${encodeURIComponent(runId)}/finish`, json(payload));
   },
 
-  scores(limit = 25): Promise<{ scores: ScoreRow[] }> {
-    return request<{ scores: ScoreRow[] }>(`/api/scores?limit=${limit}`);
-  },
-
-  board(): Promise<BoardInfo> {
-    return request<BoardInfo>('/api/board');
-  },
-
-  /** Create a PayPal order for a listing. Returns the id for the SDK. */
-  createListingOrder(payload: {
-    title: string;
-    tagline: string;
-    url: string;
-    name: string;
-    amountUsd: number;
-  }): Promise<{ orderId: string }> {
-    return request<{ orderId: string }>('/api/board/orders', json(payload));
-  },
-
-  /** Capture an approved order; on success the listing is seated immediately. */
-  captureListingOrder(orderId: string): Promise<ClaimOutcome> {
-    return request<ClaimOutcome>(
-      `/api/board/orders/${encodeURIComponent(orderId)}/capture`,
-      json({}),
-    );
+  scores(limit = 25): Promise<{ scores: ScoreRow[]; podium: ScoreRow[] }> {
+    return request<{ scores: ScoreRow[]; podium: ScoreRow[] }>(`/api/scores?limit=${limit}`);
   },
 };

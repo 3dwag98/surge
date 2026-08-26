@@ -3,13 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>SURGE — bid for the board, play for the slots</title>
+    <title>SURGE — merge fast, the floor is rising</title>
     <meta
       name="description"
-      content="Surge is a tile-merging arcade game where the floor keeps rising. Bid to rank on the public board, or play well enough to earn a slot beside it. Free to play, free to rank."
+      content="Surge is a tile-merging arcade game where the floor keeps rising. Chain merges for combo multipliers, vent to buy space, and post a verified score to the board. Free to play."
     />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#f2f9f6" />
+    <meta name="theme-color" content="#f7f4fb" id="theme-color" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,24 +17,53 @@
     />
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23f2643c'/><path d='M9 21l7-10 7 10z' fill='%23fff6f2'/></svg>"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23b8a9f0'/><path d='M9 21l7-10 7 10z' fill='%23fdfbff'/></svg>"
     />
+
+    <!--
+      Theme, applied before first paint so a dark-mode visitor never sees a
+      white flash. src/ui/theme.ts takes over from here, and the two have to
+      agree on the storage key and the attribute.
+    -->
+    <script>
+      (() => {
+        let saved = null;
+        try {
+          saved = localStorage.getItem('surge.theme');
+        } catch {
+          /* storage disabled; fall back to the system setting */
+        }
+        const theme =
+          saved === 'light' || saved === 'dark'
+            ? saved
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        document.documentElement.dataset.theme = theme;
+        if (theme === 'dark') {
+          document.querySelector('#theme-color')?.setAttribute('content', '#16151f');
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- ---------------------------------------------------------- topbar -->
     <header class="topbar">
       <a class="brand" href="/">
         <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">surge<span class="brand-dot">.lol</span></span>
+        <span class="brand-name">surge</span>
       </a>
 
       <nav class="topnav">
-        <a href="#board-section">Board</a>
         <a href="#play">Play</a>
         <a href="#scores">High scores</a>
         <a href="/agent.md" target="_blank" rel="noopener">Agent API</a>
       </nav>
 
+      <button type="button" class="btn btn-icon" id="theme-toggle" aria-pressed="false">
+        <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
+        <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
+      </button>
       <button type="button" class="btn btn-ghost" id="how-to">How to play</button>
     </header>
 
@@ -43,50 +71,24 @@
     <section class="hero">
       <p class="pulse">
         <span class="pulse-dot" aria-hidden="true"></span>
-        <strong id="board-count">0</strong> paid spots · <strong id="scores-count">0</strong> runs
-        posted · the top 3 runs hold a slot for free
+        <strong id="scores-count">0</strong> runs posted · free to play, verified server-side
       </p>
 
-      <h1 class="hero-title">
-        Claim #1 for
-        <button type="button" class="stepper" id="hero-down" aria-label="Lower the bid">−</button>
-        <span class="hero-price" id="hero-price">$0</span>
-        <button type="button" class="stepper" id="hero-up" aria-label="Raise the bid">+</button>
-      </h1>
+      <h1 class="hero-title">Merge fast.<br />The floor is <em>rising</em>.</h1>
 
-      <p class="hero-sub" id="hero-entry"></p>
+      <p class="hero-sub">
+        Slide a 5×5 board and merge equal tiles. Rows shove in from below on a timer that keeps
+        tightening — anything caught in the top row is crushed. Chain merges to climb the combo
+        multiplier, and vent when the board gets tight.
+      </p>
 
-      <form class="hero-form" id="hero-form">
-        <label class="visually-hidden" for="hero-url">Your product URL</label>
-        <div class="field">
-          <span class="field-icon" aria-hidden="true">🌐</span>
-          <input
-            id="hero-url"
-            name="url"
-            type="url"
-            maxlength="300"
-            placeholder="Your product URL"
-            spellcheck="false"
-          />
-        </div>
-        <button type="button" class="btn btn-primary btn-lg" id="hero-go">Outbid</button>
-      </form>
+      <div class="hero-actions">
+        <a class="btn btn-primary btn-lg" href="#play">Play now</a>
+        <a class="btn btn-ghost btn-lg" href="#scores">See the scores</a>
+      </div>
     </section>
 
     <main class="layout">
-      <!-- ------------------------------------------------- earned slots -->
-      <aside class="rail rail-left" aria-labelledby="slots-title">
-        <header class="rail-head">
-          <h2 id="slots-title">Earned slots</h2>
-          <span class="rail-note">won by playing · not for sale</span>
-        </header>
-        <div class="slots" id="side-slots"></div>
-        <p class="rail-foot">
-          The three best runs hold these. No bid moves them — the only way in is a
-          score.
-        </p>
-      </aside>
-
       <!-- ------------------------------------------------------- the game -->
       <section class="stage" id="play" aria-label="Game">
         <div class="hud">
@@ -135,17 +137,6 @@
                   />
                   <button type="submit" class="btn btn-primary" id="save-score">Post</button>
                 </div>
-                <label for="player-url" class="save-optional">
-                  Link for your slot <span>optional — shown if you make the top 3</span>
-                </label>
-                <input
-                  type="url"
-                  id="player-url"
-                  name="url"
-                  maxlength="300"
-                  placeholder="https://your-thing.com"
-                  spellcheck="false"
-                />
                 <p class="save-status" id="save-status" role="status"></p>
               </form>
 
@@ -185,22 +176,53 @@
         <p class="visually-hidden" id="board-status" role="status" aria-live="polite"></p>
       </section>
 
-      <!-- --------------------------------------------- the paid board -->
-      <section class="rail rail-right" id="board-section" aria-labelledby="board-title">
-        <header class="rail-head">
-          <h2 id="board-title">The board</h2>
-          <span class="rail-note">ranked by what people paid</span>
-        </header>
+      <!-- ------------------------------------------------------- the rail -->
+      <aside class="rail">
+        <section class="rail-card" aria-labelledby="podium-title">
+          <header class="rail-head">
+            <h2 id="podium-title">Podium</h2>
+            <span class="rail-note">the three best runs</span>
+          </header>
+          <div class="podium" id="podium"></div>
+        </section>
 
-        <ol class="listings" id="board-list" hidden></ol>
-        <p class="rail-empty" id="board-empty">Nobody has claimed a spot yet. #1 is open, and it is free until someone pays for it.</p>
-        <p class="rail-status" id="board-status-msg" role="status"></p>
-
-        <p class="rail-foot">
-          Bidding opens at $0 and any bid gets a place. Money buys a rank here and nothing else —
-          it cannot touch the slots or the scores.
-        </p>
-      </section>
+        <section class="rail-card" aria-labelledby="mechanics-title">
+          <header class="rail-head">
+            <h2 id="mechanics-title">The four rules</h2>
+            <span class="rail-note">everything the game does</span>
+          </header>
+          <dl class="rules">
+            <div class="rule">
+              <dt>Rising floor</dt>
+              <dd>
+                A partial row shoves in from below and everything moves up. The gap between rises
+                shrinks with every level.
+              </dd>
+            </div>
+            <div class="rule">
+              <dt>Top row kills</dt>
+              <dd>
+                Anything still in the top row when a row rises is crushed. That is the only way to
+                lose.
+              </dd>
+            </div>
+            <div class="rule">
+              <dt>Combo window</dt>
+              <dd>
+                Each merge opens a 2.6 s window. Merge again inside it and the multiplier climbs, up
+                to 9×.
+              </dd>
+            </div>
+            <div class="rule">
+              <dt>Charge &amp; vent</dt>
+              <dd>
+                Merging charges the meter. Full, it blows out the bottom row — space, not time. One
+                vent per rise.
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
     </main>
 
     <!-- ------------------------------------------------------ high scores -->
@@ -210,19 +232,21 @@
         <span class="rail-note">free to enter · verified server-side</span>
       </header>
 
-      <table class="leaderboard" id="leaderboard-table" hidden>
-        <thead>
-          <tr>
-            <th scope="col" class="col-rank">#</th>
-            <th scope="col" class="col-name">Player</th>
-            <th scope="col" class="col-score">Score</th>
-            <th scope="col" class="col-level">Lvl</th>
-            <th scope="col" class="col-tile">Best</th>
-            <th scope="col" class="col-when">When</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboard-body"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="leaderboard" id="leaderboard-table" hidden>
+          <thead>
+            <tr>
+              <th scope="col" class="col-rank">#</th>
+              <th scope="col" class="col-name">Player</th>
+              <th scope="col" class="col-score">Score</th>
+              <th scope="col" class="col-level">Lvl</th>
+              <th scope="col" class="col-tile">Best</th>
+              <th scope="col" class="col-when">When</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+      </div>
 
       <p class="rail-empty" id="leaderboard-empty">No runs posted yet. Be the first.</p>
       <p class="rail-status" id="leaderboard-status" role="status"></p>
@@ -240,62 +264,6 @@
         does is gone.
       </p>
     </footer>
-
-    <!-- ------------------------------------------------------ claim dialog -->
-    <dialog class="dialog" id="claim-dialog">
-      <form method="dialog" class="dialog-form" id="claim-form">
-        <header class="dialog-head">
-          <h2>Take a spot</h2>
-          <button type="button" class="dialog-close" id="claim-close" aria-label="Close">×</button>
-        </header>
-
-        <p class="dialog-note" id="claim-note"></p>
-
-        <label for="claim-title">Title</label>
-        <input
-          id="claim-title"
-          name="title"
-          type="text"
-          maxlength="60"
-          placeholder="What you are putting on the board"
-          required
-        />
-
-        <label for="claim-tagline">Description <span class="opt">optional</span></label>
-        <input
-          id="claim-tagline"
-          name="tagline"
-          type="text"
-          maxlength="140"
-          placeholder="One line about it"
-        />
-
-        <label for="claim-url">Link (https)</label>
-        <input
-          id="claim-url"
-          name="url"
-          type="url"
-          maxlength="300"
-          placeholder="https://example.com"
-          required
-        />
-
-        <label for="claim-name">Your name</label>
-        <input id="claim-name" name="name" type="text" maxlength="18" placeholder="who to credit" />
-
-        <label for="claim-amount">Bid (USD)</label>
-        <input id="claim-amount" name="amount" type="number" step="0.01" min="0.01" required />
-
-        <div class="paypal-mount" id="paypal-buttons"></div>
-        <p class="dialog-status" id="claim-status" role="status"></p>
-
-        <p class="dialog-fineprint">
-          Your bid buys a rank, not a guarantee: pay more than the leader and you take #1, pay less
-          and you seat below them. Links open in a new tab and are marked <code>sponsored</code>.
-          Nothing here affects the scores.
-        </p>
-      </form>
-    </dialog>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

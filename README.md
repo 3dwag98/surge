@@ -1,16 +1,15 @@
 # SURGE
 
-A tile-merging arcade game where the floor keeps rising, wrapped in a public
-board you bid your way onto — and three slots beside it that money cannot buy.
+A tile-merging arcade game where the floor keeps rising, wrapped in a pastel
+shell that comes in light and dark.
 
 Slide a 5x5 board and merge equal tiles. Unlike 2048, the board is under
 constant pressure: rows push in from the bottom on a timer that tightens as you
 level, and anything left in the **top row** when a row rises is crushed. There
 is no winning tile — you play for score until the board buries you.
 
-**Playing is free and always will be.** Money buys a rank on the board at the
-side of the page. It never buys a position on the game board, a score, or one of
-the three earned slots.
+Playing is free, there is nothing to buy, and the only way onto the board is a
+score the server replayed for itself.
 
 ---
 
@@ -27,24 +26,38 @@ The tuning is deliberate. Venting used to reset the rise timer, which made the
 game unlosable — a fast player earns charge faster than the interval shrinks, so
 they could stall the floor forever. Capping vents at one per rise fixed it.
 
-## Two ways onto the page
+## The board and the podium
 
-There are two boards, and they do not touch.
+There is one leaderboard, it is free, and every row on it was produced by the
+server replaying a real move log.
 
-**The paid board** is an auction with no losers and no door charge. Bidding
-opens at **$0** and climbs from there: there is no entry fee to clear, only
-whatever the people above you have already paid. Beat what the leader paid and
-you take #1 — pay less and you simply seat lower, which is why a bid can never
-be "rejected for being too small". The only amount that fails is one PayPal
-cannot capture, so the real floor is a single cent. The claim form quotes the
-rank your number would buy before you pay it, computed with the same `rankFor`
-the board renders with.
+Beside the game sits the **podium**: the three best runs, one place per player,
+so a single hot streak cannot take all three. It is fed from the same response
+the table renders, so posting a run updates both without a second round trip.
 
-**The earned slots** are the three slots beside the game, and they belong to the
-three best runs. No bid moves them. One per player, so a single hot streak
-cannot take the whole rail — only a player's best run counts and the rest of the
-slots go to other people. If your run takes one, the optional link you attached
-when posting the score is hung off it.
+## Look and theme
+
+The page and the game share one pastel palette in two themes.
+
+Every colour the shell paints is a custom property on `:root` in
+`src/styles.css`, and dark mode redefines the tokens rather than restyling
+components — a rule written once is correct in both themes. `data-theme` on
+`<html>` is the switch: a blocking inline script in `index.html` applies the
+stored choice before first paint so a dark-mode visitor never sees a white
+flash, and `src/ui/theme.ts` owns it from there.
+
+The canvas cannot read CSS variables, so the board keeps its own copy of the
+palette in `src/render/palette.ts` and the theme controller swaps it at the same
+moment. Tile hue is derived from the exponent rather than picked off a list, so
+a 65536 tile is a natural continuation of a 2. The ramp climbs from sky blue
+through periwinkle, orchid and rose into peach — routed around the yellow-green
+stretch, which is the one part of the wheel that does not survive being made
+pastel. Tiles stay pale in both themes, so one dark ink is readable on every
+step of the ramp.
+
+A visitor who has never touched the toggle follows their system setting and
+keeps following it. The moment they pick a side it is stored, and system changes
+stop moving the page under them.
 
 ## Running it locally
 
@@ -71,7 +84,8 @@ npm run build
 
 ## Deploying to Cloudflare
 
-The app is a single Worker with static assets and a D1 database. Nothing else.
+The app is a single Worker with static assets and a D1 database. Nothing else —
+no payment provider, no secrets to set.
 
 ```sh
 # 1. Authenticate
@@ -86,43 +100,6 @@ npm run db:migrate
 # 4. Build and ship
 npm run cf:deploy
 ```
-
-### PayPal
-
-Without credentials the board is read-only — it renders, but nothing can be
-claimed — and everything else works. To turn payments on:
-
-```sh
-npx wrangler secret put PAYPAL_CLIENT_ID
-npx wrangler secret put PAYPAL_CLIENT_SECRET
-npx wrangler secret put PAYPAL_WEBHOOK_ID     # optional but recommended
-```
-
-`PAYPAL_ENVIRONMENT` in `wrangler.toml` is **`sandbox`**, and it stays that way
-until you deliberately change it to `live`. Nothing about deploying to
-production flips it — taking real money is its own decision, made on purpose.
-Point a PayPal webhook at `https://<your-worker>/api/paypal/webhook` and
-subscribe it to `PAYMENT.CAPTURE.COMPLETED`.
-
-Secrets are never put in `wrangler.toml`; they would land in git.
-
-## How a claim works
-
-1. A visitor fills in a title, an optional description, an `https://` link, and
-   any bid at all above $0.
-2. The server validates it, creates a PayPal order, and stores the claim as
-   `pending`. Nothing is displayed yet.
-3. PayPal captures the payment. The server confirms the capture **server-side**
-   and only then does the listing appear — at whatever rank the cleared amount
-   earns it.
-
-The amount that goes on the board is the amount PayPal says actually cleared,
-never the number the browser asked for. Links are forced to `https`, rendered
-with `rel="nofollow noopener sponsored"`, and opened in a new tab.
-
-There is no longer a race to lose: in v1 a claim that cleared while someone else
-was outbidding you was marked `outbid` and shown to nobody. Now it just lands
-below them, which is both fairer and a good deal less code.
 
 ## Scores are verified, not trusted
 
@@ -170,51 +147,46 @@ Full rules, the `GameState` schema and a worked bot example are in
 
 Bots will out-score humans — they merge far faster, and the combo multiplier
 rewards exactly that. That is a consequence of inviting them, not a defect. It
-also means the earned slots are, in practice, contested by bots.
+also means the podium is, in practice, contested by bots.
 
 ## Layout
 
 ```
-index.html            page shell
+index.html            page shell + the pre-paint theme script
 wrangler.toml         Worker, assets and D1 bindings
-migrations/           D1 schema (0002 turns the single banner into a board)
+migrations/           D1 schema (0003 drops the retired paid board)
 src/
   main.ts             run lifecycle, input, frame loop
-  styles.css          the light shell around a dark board
+  styles.css          pastel tokens, light and dark
   game/engine.ts      all the rules — no DOM, injected time, seeded RNG
   game/rng.ts         deterministic mulberry32
   render/renderer.ts  canvas: tweening, particles, shake, pressure bar
-  render/palette.ts   every colour the board paints, tiles derived from exponent
-  ui/                 tutorial, leaderboard, board + PayPal, agent API
+  render/palette.ts   every colour the board paints, in both themes
+  ui/                 tutorial, leaderboard, podium, theme, agent API
   net/api.ts          worker client
 shared/
   replay.ts           action log encoding + authoritative replay
-  rules.ts            validation, pricing and ranking, used by both sides
+  rules.ts            names, score ordering and the podium, used by both sides
 worker/
-  index.ts            Hono app: scores, board, webhook
-  paypal.ts           Orders v2 + webhook signature verification
+  index.ts            Hono app: runs and scores
 test/                 vitest suites
 ```
 
 `src/game/engine.ts` holds every rule and touches no DOM, which is what lets the
 same file run the browser at 60 fps and settle leaderboard disputes inside a
-Worker. `shared/rules.ts` plays the same role for money: the price the browser
-quotes and the price the Worker enforces come from one file.
+Worker. `shared/rules.ts` plays the same role for ordering: the rank the browser
+renders and the rank the Worker computes come from one file.
 
 ## Accessibility and browser support
 
-The page is a fresh mint-white shell and the board is light to match — the tile
-ramp walks from pale green through citrus into coral and pink, so a bigger tile
-reads as hotter, and every colour the board paints lives in
-`src/render/palette.ts` rather than scattered through the draw calls.
 A run pauses while its tab is hidden. `requestAnimationFrame` stops when you
 switch away, so without discounting that time every rise that fell due while you
 were gone would land in the first frame back and bury you before you could move.
 The action log is timed off the same paused clock, so the server replay still
 agrees with what the player saw.
 
-`prefers-reduced-motion` disables tweening,
-particles and shake, and snaps tiles into place instead. Keyboard play is full
-(arrows, WASD, HJKL, Space to vent) and typing in any input never moves the
-board. Player-supplied text is always rendered through `textContent`, never
-`innerHTML`.
+`prefers-reduced-motion` disables tweening, particles and shake, and snaps tiles
+into place instead. `prefers-color-scheme` picks the theme for anyone who has
+not chosen one. Keyboard play is full (arrows, WASD, HJKL, Space to vent) and
+typing in any input never moves the board. Player-supplied text is always
+rendered through `textContent`, never `innerHTML`.
