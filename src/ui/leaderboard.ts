@@ -2,7 +2,7 @@
  * The high-score table. Free to enter: play well and you are on it.
  */
 
-import { api } from '../net/api.js';
+import { api, apiMessage } from '../net/api.js';
 import type { ScoreRow } from '../../shared/rules.js';
 
 export interface LeaderboardElements {
@@ -36,10 +36,12 @@ export class LeaderboardView {
       this.render();
       this.els.status.textContent = '';
       return podium;
-    } catch {
+    } catch (error) {
       this.offline = true;
       this.render();
-      this.els.status.textContent = 'The board did not load. Refresh to try again.';
+      // Say which thing went wrong. "Offline" covers a rate limit, an exhausted
+      // database and a dropped connection, and the player can only act on one.
+      this.els.status.textContent = apiMessage(error, 'The board did not load. Refresh to try again.');
       return [];
     }
   }

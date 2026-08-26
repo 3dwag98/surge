@@ -1,4 +1,4 @@
-name = "surge"
+name = "play"
 main = "worker/index.ts"
 compatibility_date = "2025-08-01"
 compatibility_flags = ["nodejs_compat"]
@@ -31,6 +31,27 @@ migrations_dir = "migrations"
 # and paste the site token here. It is a public identifier, not a secret: it
 # ships in the page. Leave it empty and no beacon is injected at all.
 WEB_ANALYTICS_TOKEN = ""
+
+# Rate limits, so one storm of requests cannot spend the whole day's free-tier
+# allowance in a couple of minutes. These are per-colo and best effort, which is
+# the right trade for abuse protection: they exist to blunt a flood, not to meter
+# anyone precisely. Reads and writes get separate budgets so a burst of people
+# looking at the board cannot stop anyone posting a score.
+[[ratelimits]]
+name = "READ_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+[[ratelimits]]
+name = "WRITE_LIMITER"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
 
 [observability]
 enabled = true

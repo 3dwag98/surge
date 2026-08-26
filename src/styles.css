@@ -187,6 +187,12 @@ a {
   outline-offset: 2px;
 }
 
+/* `display` on a bare element selector beats the hidden attribute's own
+   display:none, so the key hint has to opt back out explicitly. */
+kbd[hidden] {
+  display: none;
+}
+
 kbd {
   display: inline-block;
   padding: 2px 6px;
@@ -616,6 +622,19 @@ kbd {
 
 .deck-hint kbd {
   margin-left: 2px;
+}
+
+/* Only ever present when something is actually wrong, so it is allowed to be
+   the alarm ink. */
+.deck-note {
+  width: 100%;
+  color: var(--pink-deep);
+  font-family: var(--data);
+  font-size: var(--t2);
+}
+
+.deck-note[hidden] {
+  display: none;
 }
 
 .hint-touch {

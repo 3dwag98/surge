@@ -25,6 +25,13 @@ export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   /**
+   * Per-colo request limiters. Optional so a config without them still boots —
+   * a missing limiter fails open, because a limiter that cannot be reached must
+   * never be the thing that takes the API down.
+   */
+  READ_LIMITER?: RateLimit;
+  WRITE_LIMITER?: RateLimit;
+  /**
    * Cloudflare Web Analytics site token. Optional: with no token the beacon is
    * never injected and the page ships exactly as built.
    */
@@ -33,10 +40,10 @@ export interface Env {
 
 /** A run ticket expires if it is not submitted; stops seeds being farmed. */
 const RUN_TTL_MS = 3 * 60 * 60 * 1000;
-/** Cheap abuse guard on run creation, per IP. */
-const RUN_RATE_LIMIT = 60;
-const RUN_RATE_WINDOW_MS = 10 * 60 * 1000;
 const MAX_LOG_BYTES = 96 * 1024;
+
+/** What a 429 asks the caller to wait, matching the limiter's window. */
+const RETRY_AFTER_SECONDS = 60;
 
 /** How deep to look when working out who is on the podium. */
 const PODIUM_POOL = 60;
@@ -57,6 +64,36 @@ function clientIp(request: Request): string {
 
 function newId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * Spend one unit of a rate limit budget.
+ *
+ * The key is the caller's IP, which the Rate Limiting docs rightly warn about —
+ * people behind one mobile carrier share an address. That is an acceptable cost
+ * here: there is no account to key on, the budgets are set well above what any
+ * one person does, and the alternative is letting a single script spend the
+ * whole day's free-tier allowance in a couple of minutes.
+ *
+ * A limiter that is missing or throwing fails open. It is a guard rail, not a
+ * dependency, and it must never be the reason the game stops working.
+ */
+async function overBudget(limiter: RateLimit | undefined, key: string): Promise<boolean> {
+  if (!limiter) return false;
+  try {
+    const { success } = await limiter.limit({ key });
+    return !success;
+  } catch {
+    return false;
+  }
+}
+
+/** The one shape a rate-limited caller ever sees. */
+function tooMany(): Response {
+  return Response.json(
+    { error: 'too many requests right now — try again in a minute', retryable: true },
+    { status: 429, headers: { 'retry-after': String(RETRY_AFTER_SECONDS) } },
+  );
 }
 
 function seed(): number {
@@ -80,6 +117,8 @@ function topScores(env: Env, limit: number): Promise<D1Result<ScoreRow>> {
 /* ------------------------------------------------------------------ scores */
 
 app.get('/api/scores', async (c) => {
+  if (await overBudget(c.env.READ_LIMITER, clientIp(c.req.raw))) return tooMany();
+
   const requested = Number(c.req.query('limit'));
   const limit =
     Number.isInteger(requested) && requested > 0 ? Math.min(requested, 100) : LEADERBOARD_LIMIT;
@@ -94,17 +133,10 @@ app.get('/api/scores', async (c) => {
 /** Open a run: the server picks the seed so it can replay the result later. */
 app.post('/api/runs', async (c) => {
   const ip = clientIp(c.req.raw);
-  const since = new Date(Date.now() - RUN_RATE_WINDOW_MS).toISOString();
-
-  const recent = await c.env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM runs WHERE ip = ?1 AND created_at > ?2`,
-  )
-    .bind(ip, since)
-    .first<{ n: number }>();
-
-  if ((recent?.n ?? 0) >= RUN_RATE_LIMIT) {
-    return c.json({ error: 'too many runs started, slow down' }, 429);
-  }
+  // This used to be a COUNT over the runs table, which meant a flood of run
+  // requests was answered by hammering the database it was meant to protect.
+  // The limiter costs no query at all.
+  if (await overBudget(c.env.WRITE_LIMITER, ip)) return tooMany();
 
   const runId = newId();
   const runSeed = seed();
@@ -122,6 +154,10 @@ app.post('/api/runs', async (c) => {
  * against the seed we issued and record whatever the engine produces.
  */
 app.post('/api/runs/:id/finish', async (c) => {
+  // Submitting is the most expensive thing this Worker does — it replays the
+  // whole run — so it is metered on the same budget as opening one.
+  if (await overBudget(c.env.WRITE_LIMITER, clientIp(c.req.raw))) return tooMany();
+
   const runId = c.req.param('id');
   const body = await c.req.json().catch(() => null);
   if (!body || typeof body !== 'object') return c.json({ error: 'body must be JSON' }, 400);
@@ -212,14 +248,69 @@ app.post('/api/runs/:id/finish', async (c) => {
 
 /* ------------------------------------------------------------------ misc */
 
-app.get('/api/health', (c) =>
-  c.json({ ok: true, analytics: Boolean(c.env.WEB_ANALYTICS_TOKEN), time: nowIso() }),
-);
+/**
+ * Liveness, and — with `?db=1` — one cheap query to prove the database is
+ * still answering. The database check is opt-in because a monitor polling it
+ * every minute would itself spend the daily row allowance it is watching.
+ */
+app.get('/api/health', async (c) => {
+  const body: Record<string, unknown> = {
+    ok: true,
+    analytics: Boolean(c.env.WEB_ANALYTICS_TOKEN),
+    time: nowIso(),
+  };
+
+  if (c.req.query('db')) {
+    try {
+      await c.env.DB.prepare('SELECT 1').first();
+      body.db = 'ok';
+    } catch (error) {
+      body.db = outOfAllowance(error) ? 'over-limit' : 'unavailable';
+      body.ok = false;
+    }
+  }
+
+  return c.json(body, body.ok ? 200 : 503);
+});
 
 app.all('/api/*', (c) => c.json({ error: 'unknown endpoint' }, 404));
 
+/**
+ * A D1 failure is not a bug in this Worker, and answering it with "internal
+ * error" tells the player nothing they can act on. The two cases worth telling
+ * apart are the database being out of its daily allowance — which fixes itself
+ * at the reset and means nobody can post today — and it being unreachable,
+ * which is worth retrying now.
+ */
+function isDatabaseError(error: unknown): boolean {
+  return error instanceof Error && /D1_ERROR|D1_EXCEPTION|SQLITE_/.test(error.message);
+}
+
+function outOfAllowance(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /limit|quota|exceeded|exhausted|too many/i.test(error.message)
+  );
+}
+
 app.onError((error, c) => {
   if (error instanceof ValidationError) return c.json({ error: error.message }, 400);
+
+  if (isDatabaseError(error)) {
+    console.error('[worker] database', error);
+    return c.json(
+      outOfAllowance(error)
+        ? {
+            error:
+              'the leaderboard has used up its database allowance for today — the game still plays, but scores cannot be posted until it resets',
+            retryable: false,
+          }
+        : { error: 'the leaderboard database is unreachable right now', retryable: true },
+      503,
+      { 'retry-after': String(RETRY_AFTER_SECONDS) },
+    );
+  }
+
   console.error('[worker]', error);
   return c.json({ error: 'internal error' }, 500);
 });

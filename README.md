@@ -184,6 +184,42 @@ either. **That list is exhaustive: any path left off it is handed to the SPA
 fallback and never sees the Worker.** `/api/*` has to be on it or the entire API
 starts answering with `index.html`.
 
+## What happens under load
+
+The whole thing runs on Cloudflare's free tier, which is a real ceiling rather
+than a theoretical one: 100,000 Worker requests a day, and a daily row allowance
+on D1. A single script can spend either of those in minutes. Three things keep
+that from being a silent failure.
+
+**Rate limits, so a flood cannot spend the day's budget.** Two `ratelimits`
+bindings in `wrangler.toml` — 60 reads and 20 writes a minute, keyed on the
+caller's IP. Over budget gets `429` with a `Retry-After`. The limiter is a guard
+rail, not a dependency: if the binding is missing or throws, it fails open,
+because a limiter must never be the reason the game stops working. This replaced
+a `COUNT` over the `runs` table, which had the property of answering a flood of
+run requests by hammering the database it was supposed to be protecting.
+
+**Honest errors when the database runs out.** A D1 failure is not a bug in this
+Worker, and answering it with `internal error` tells a player nothing they can
+act on. `app.onError` tells the two useful cases apart and returns `503` for
+both: out of daily allowance, which fixes itself at the reset and means nobody
+can post today, and unreachable, which is worth retrying now. `GET
+/api/health?db=1` runs one query and reports `ok`, `over-limit` or
+`unavailable` — opt-in, because a monitor polling it every minute would spend
+the allowance it is watching.
+
+**The game keeps working regardless.** None of this stops play: the engine needs
+no network, and a run without a server ticket is still a run. What changes is
+that the player is told *at the start* rather than after five good minutes — a
+line under the deck naming the actual reason, in the server's own words, and the
+same reason again on the game-over card. The board's status line does the same
+for the leaderboard.
+
+The one case the Worker cannot answer for itself is running out of Worker
+requests: past the daily limit Cloudflare responds before the Worker does, with
+an error page rather than JSON. The client treats a non-JSON reply as exactly
+that and says so, instead of reporting a malformed response.
+
 ## Scores are verified, not trusted
 
 There is no endpoint that accepts a score.

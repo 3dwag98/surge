@@ -12,7 +12,7 @@ import { CHARGE_MAX, SurgeGame } from './game/engine.js';
 import { randomSeed } from './game/rng.js';
 import type { Direction, GameState } from './game/types.js';
 import { Renderer } from './render/renderer.js';
-import { api } from './net/api.js';
+import { api, apiMessage } from './net/api.js';
 import { installAgentApi, type InstalledAgentApi } from './ui/agent.js';
 import { AttractMode } from './ui/attract.js';
 import { LeaderboardView, formatNumber } from './ui/leaderboard.js';
@@ -71,6 +71,7 @@ const els = {
   scoresCount: $('#scores-count'),
   saveButton: $<HTMLButtonElement>('#save-score'),
   saveStatus: $('#save-status'),
+  runNote: $('#run-note'),
   playAgain: $<HTMLButtonElement>('#play-again'),
   attract: $('#attract'),
   attractStart: $<HTMLButtonElement>('#attract-start'),
@@ -140,6 +141,14 @@ let agent: InstalledAgentApi;
 let mode: 'idle' | 'attract' | 'live' = 'idle';
 /** True while a run ticket is in flight, so the board is only claimed once. */
 let claiming = false;
+/**
+ * Why this run cannot be posted, if it cannot. Null when it has a ticket.
+ *
+ * The run still plays either way — the game does not need the network — but the
+ * player is told at the start rather than being handed the bad news after a
+ * good run.
+ */
+let ticketProblem: string | null = null;
 
 /**
  * Time the run has actually been watchable, in milliseconds.
@@ -182,6 +191,9 @@ function startDemo(): void {
   submitted = false;
   actions = [];
   runId = null;
+  // A demo was never going to be posted, so the note would be noise on it.
+  ticketProblem = null;
+  showRunNote();
 
   game = new SurgeGame({ seed: randomSeed() });
   runOrigin = performance.now();
@@ -222,8 +234,10 @@ async function startRun(): Promise<void> {
     const ticket = await api.startRun();
     seed = ticket.seed;
     ticketId = ticket.runId;
-  } catch {
+    ticketProblem = null;
+  } catch (error) {
     ticketId = null;
+    ticketProblem = apiMessage(error, 'The board is offline.');
   }
 
   // Everything below is one step, taken only once the seed is settled. Flipping
@@ -245,8 +259,15 @@ async function startRun(): Promise<void> {
   renderer.sync(game.tiles);
   hideOverlay();
   updateHud(game.snapshot(0));
-  announce('New run started.');
+  showRunNote();
+  announce(ticketProblem ? `New run started. ${ticketProblem} This run cannot be posted.` : 'New run started.');
   publish();
+}
+
+/** The standing note under the deck: present exactly when the run cannot count. */
+function showRunNote(): void {
+  els.runNote.textContent = ticketProblem ? `${ticketProblem} This run cannot be posted.` : '';
+  els.runNote.hidden = ticketProblem === null;
 }
 
 function record(type: Action['type'], at: number): void {
@@ -410,7 +431,8 @@ function finishRun(): void {
 
   const canSave = state.score > 0 && runId !== null && !submitted;
   els.saveForm.hidden = !canSave;
-  els.saveStatus.textContent = runId === null && state.score > 0 ? 'Offline — this run cannot be posted.' : '';
+  els.saveStatus.textContent =
+    runId === null && state.score > 0 ? (ticketProblem ?? 'This run cannot be posted.') : '';
   els.saveStatus.classList.remove('is-error');
   els.overlay.hidden = false;
   if (canSave) els.playerName.focus();
@@ -457,8 +479,9 @@ async function submitScore(event: Event): Promise<void> {
     els.playAgain.focus();
   } catch (error) {
     els.saveStatus.classList.add('is-error');
-    els.saveStatus.textContent =
-      error instanceof Error ? `Could not post: ${error.message}` : 'Could not post this run.';
+    // The server says why — a rate limit, an exhausted database, an expired
+    // ticket — and each of those needs a different thing from the player.
+    els.saveStatus.textContent = apiMessage(error, 'This run could not be posted.');
   } finally {
     els.saveButton.disabled = false;
   }

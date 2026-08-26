@@ -29,10 +29,29 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Seconds the server asked us to wait, when it said. */
+    readonly retryAfter: number | null = null,
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+/**
+ * A sentence to put in front of the player.
+ *
+ * The Worker already writes its own errors in plain language, so the job here
+ * is punctuation, not translation — inventing a friendlier message would only
+ * hide which of the several possible things actually went wrong. The one case
+ * with nothing to quote is a response that never reached the Worker at all:
+ * over the daily request allowance, Cloudflare answers before the Worker runs,
+ * and what comes back is an error page rather than JSON.
+ */
+export function apiMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError)) return fallback;
+  const text = error.message.trim();
+  if (!text) return fallback;
+  return text.charAt(0).toUpperCase() + text.slice(1) + (/[.!?]$/.test(text) ? '' : '.');
 }
 
 const TIMEOUT_MS = 8000;
@@ -46,17 +65,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       signal: controller.signal,
       headers: { accept: 'application/json', ...(init?.headers ?? {}) },
     });
+    const retryAfter = Number(response.headers.get('retry-after')) || null;
     const text = await response.text();
     let body: unknown = null;
     try {
       body = text ? JSON.parse(text) : null;
     } catch {
-      throw new ApiError('server sent a malformed response', response.status);
+      // Not JSON. Something answered before the Worker did — an edge error page
+      // is what being over the daily request allowance looks like from here.
+      throw new ApiError(
+        'the server is not answering right now, which usually means it is over its daily limit',
+        response.status,
+        retryAfter,
+      );
     }
     if (!response.ok) {
       const message =
         (body as { error?: string } | null)?.error ?? `request failed (${response.status})`;
-      throw new ApiError(message, response.status);
+      throw new ApiError(message, response.status, retryAfter);
     }
     return body as T;
   } finally {
