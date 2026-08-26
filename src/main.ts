@@ -100,6 +100,7 @@ new ThemeController({
 
 const tutorial = new Tutorial({
   root: $('#tutorial'),
+  diagramEl: $('#tutorial-diagram'),
   titleEl: $('#tutorial-title'),
   bodyEl: $('#tutorial-body'),
   keysEl: $('#tutorial-keys'),

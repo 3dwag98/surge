@@ -69,7 +69,14 @@
    * the scores rule and the colophon all take their width from the same sum, so
    * every horizontal line on the page starts and ends together.
    */
-  --board-col: 500px;
+  /*
+   * The board is sized from the viewport, not fixed, so the whole cabinet —
+   * masthead, HUD, board and deck — lands above the fold on a laptop instead of
+   * asking you to scroll before you can play. 1.046 is the canvas aspect
+   * (544/520); the constant is everything stacked above and below it. The floor
+   * stops a short window from producing a board too small to read.
+   */
+  --board-col: clamp(280px, calc((100dvh - 312px) / 1.046), 500px);
   --side-col: 284px;
   --cabinet-gap: clamp(14px, 2.2vw, 26px);
   --measure: calc(var(--board-col) + var(--cabinet-gap) + var(--side-col));
@@ -384,8 +391,8 @@ kbd {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: end;
-  gap: 8px clamp(16px, 3vw, 34px);
-  padding-bottom: 12px;
+  gap: 6px clamp(16px, 3vw, 34px);
+  padding-bottom: 9px;
   /* One of only two rules on the page; it sets the measure everything else
      lines up to. */
   border-bottom: 1px solid var(--ink);
@@ -460,14 +467,14 @@ kbd {
   justify-content: center;
   gap: var(--cabinet-gap);
   align-items: start;
-  max-width: var(--measure);
+  max-width: calc(var(--measure) + 2 * var(--edge));
   margin: 0 auto;
-  padding: clamp(14px, 2.2vw, 24px) var(--edge) 44px;
+  padding: 10px var(--edge) 40px;
 }
 
 .screen {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -733,7 +740,7 @@ kbd {
   width: min(100%, 336px);
   max-height: 100%;
   overflow-y: auto;
-  padding: 18px;
+  padding: 16px;
   background: var(--sheet);
   text-align: center;
 }
@@ -844,6 +851,324 @@ kbd {
 
 .tutorial-dot.is-current {
   background: var(--pink);
+}
+
+/* ------------------------------------------------------ tutorial diagrams */
+
+/*
+ * Small looping pictures of each mechanic, on the same grid the board uses.
+ * Colour comes from the page tokens so they follow the theme, and the motion is
+ * all CSS so reduced motion switches it off without any script. Each diagram's
+ * unanimated state is its opening frame, so a still is still readable.
+ */
+.tutorial-diagram {
+  margin-bottom: 10px;
+}
+
+.tutorial-diagram[hidden] {
+  display: none;
+}
+
+.dg {
+  display: block;
+  width: 100%;
+  max-width: 164px;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.dg-slot {
+  fill: var(--control);
+}
+
+.dg-ceiling {
+  fill: var(--pink);
+  opacity: 0.22;
+}
+
+.dg-tile rect {
+  fill: var(--aqua-wash);
+  stroke: none;
+}
+
+/* The diagrams borrow the board's ramp instead of inventing a palette. */
+.dg-tile[data-value='2'] rect {
+  fill: hsl(186 74% 87%);
+}
+.dg-tile[data-value='4'] rect {
+  fill: hsl(205 73% 85%);
+}
+.dg-tile[data-value='8'] rect {
+  fill: hsl(223 72% 83%);
+}
+.dg-tile[data-value='16'] rect {
+  fill: hsl(242 71% 81%);
+}
+
+:root[data-theme='dark'] .dg-tile[data-value='2'] rect {
+  fill: hsl(186 66% 78%);
+}
+:root[data-theme='dark'] .dg-tile[data-value='4'] rect {
+  fill: hsl(205 65% 76%);
+}
+:root[data-theme='dark'] .dg-tile[data-value='8'] rect {
+  fill: hsl(223 64% 74%);
+}
+:root[data-theme='dark'] .dg-tile[data-value='16'] rect {
+  fill: hsl(242 63% 72%);
+}
+
+.dg-label {
+  fill: hsl(210 52% 22%);
+  font-family: var(--display);
+  font-variation-settings: 'wdth' 82;
+  font-weight: 700;
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.dg-multiplier {
+  fill: var(--pink-deep);
+  font-family: var(--data);
+  font-size: 8px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.dg-track {
+  fill: var(--control);
+}
+
+.dg-drain {
+  fill: var(--pink);
+  transform-origin: left center;
+  animation: dg-drain 2.8s linear infinite;
+}
+
+/* --- slide: everything shoves to the far edge, together ----------------- */
+
+.dg-move {
+  animation: dg-slide 2.8s ease-in-out infinite;
+}
+
+.dg-from-0 {
+  --dg-from: 0px;
+}
+.dg-from-1 {
+  --dg-from: -19px;
+}
+.dg-from-2 {
+  --dg-from: -38px;
+}
+
+@keyframes dg-slide {
+  0%,
+  22% {
+    transform: translateX(var(--dg-from));
+  }
+  48%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* --- merge: two become one --------------------------------------------- */
+
+/* The tile that stays put also has to vanish when the merged tile lands on it. */
+.dg-eater {
+  animation: dg-consume 2.8s ease-in-out infinite;
+}
+
+.dg-eaten {
+  animation:
+    dg-slide 2.8s ease-in-out infinite,
+    dg-consume 2.8s ease-in-out infinite;
+}
+
+.dg-born {
+  transform-origin: center;
+  animation: dg-born 2.8s ease-in-out infinite;
+}
+
+@keyframes dg-consume {
+  0%,
+  44% {
+    opacity: 1;
+  }
+  52%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dg-born {
+  0%,
+  46% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  70%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- combo: the window closes while the multiplier climbs --------------- */
+
+@keyframes dg-drain {
+  0%,
+  10% {
+    transform: scaleX(1);
+  }
+  90%,
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+.dg-pulse {
+  transform-origin: center;
+  animation: dg-pulse 2.8s ease-out infinite;
+}
+
+.dg-beat-0 {
+  animation-delay: 0s;
+}
+.dg-beat-1 {
+  animation-delay: 0.45s;
+}
+.dg-beat-2 {
+  animation-delay: 0.9s;
+}
+
+@keyframes dg-pulse {
+  0% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  22%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.dg-multiplier {
+  animation: dg-count 2.8s steps(1) infinite;
+}
+
+@keyframes dg-count {
+  0%,
+  30% {
+    opacity: 0;
+  }
+  40%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* --- rise: the floor comes up and the ceiling takes what it reaches ----- */
+
+.dg-lift {
+  animation: dg-lift 3s ease-in-out infinite;
+}
+
+.dg-doomed {
+  animation:
+    dg-lift 3s ease-in-out infinite,
+    dg-crush 3s ease-in-out infinite;
+}
+
+.dg-fed {
+  animation: dg-fed 3s ease-in-out infinite;
+}
+
+@keyframes dg-lift {
+  0%,
+  30% {
+    transform: translateY(0);
+  }
+  55%,
+  100% {
+    transform: translateY(-19px);
+  }
+}
+
+@keyframes dg-crush {
+  0%,
+  52% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 1;
+    filter: brightness(1.4);
+  }
+  72%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dg-fed {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  62%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- vent: the floor blows out and everything falls -------------------- */
+
+.dg-drop {
+  animation: dg-drop 3s ease-in-out infinite;
+}
+
+.dg-blown {
+  transform-origin: center;
+  animation: dg-blown 3s ease-in-out infinite;
+}
+
+@keyframes dg-drop {
+  0%,
+  34% {
+    transform: translateY(0);
+  }
+  58%,
+  100% {
+    transform: translateY(19px);
+  }
+}
+
+@keyframes dg-blown {
+  0%,
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  46% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
 }
 
 .tutorial-keys {
@@ -991,7 +1316,7 @@ kbd {
 /* ---------------------------------------------------------------- scores */
 
 .scores {
-  max-width: var(--measure);
+  max-width: calc(var(--measure) + 2 * var(--edge));
   margin: 0 auto;
   padding: 0 var(--edge) 36px;
 }
@@ -1116,7 +1441,7 @@ kbd {
 /* -------------------------------------------------------------- colophon */
 
 .colophon {
-  max-width: var(--measure);
+  max-width: calc(var(--measure) + 2 * var(--edge));
   margin: 0 auto;
   padding: 0 var(--edge) 44px;
   color: var(--ink-3);

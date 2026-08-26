@@ -11,12 +11,12 @@ Machine-readable index: [/llms.txt](/llms.txt)
 ## The game in one paragraph
 
 A 5x5 well. You slide the whole board in one of four directions; tiles travel as
-far as they can and equal tiles merge into their sum. Unlike 2048 the board is
+far as they can and equal tiles merge into their sum. The board is
 under time pressure: rows push in from the **bottom** on a timer and shove
 everything **up**, and any tile still in the **top row** when a row rises is
 crushed, ending the run. There is no winning tile — you play for score.
 
-## Rules that differ from 2048
+## The rules that shape play
 
 | | Surge |
 |---|---|

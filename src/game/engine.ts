@@ -1,8 +1,8 @@
 /**
  * Surge — the game engine.
  *
- * Not 2048. You still slide and merge a grid of powers of two, but the board
- * is under constant pressure:
+ * A merge game played under constant pressure. You slide a grid of powers of
+ * two and fuse equal tiles, but the board never settles:
  *
  *   - Rows push in from the bottom on a timer that tightens as you level up,
  *     shoving everything up. A tile forced off the top ends the run.

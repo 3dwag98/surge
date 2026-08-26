@@ -3,17 +3,21 @@
 A tile-merging arcade game where the floor keeps rising, in a risograph shell
 that comes in light and dark. It opens playing itself.
 
-Slide a 5x5 board and merge equal tiles. Unlike 2048, the board is under
-constant pressure: rows push in from the bottom on a timer that tightens as you
-level, and anything left in the **top row** when a row rises is crushed. There
-is no winning tile — you play for score until the board buries you.
+Slide a 5x5 board and merge equal tiles. The board is under constant pressure:
+rows push in from the bottom on a timer that tightens as you level, and anything
+left in the **top row** when a row rises is crushed. There is no winning tile —
+you play for score until the board buries you.
 
 Playing is free, there is nothing to buy, and the only way onto the board is a
 score the server replayed for itself.
 
 ---
 
-## What makes it not-2048
+## The four systems
+
+SURGE is its own game, described on its own terms: a merge game played under
+constant pressure, not a variation on anything else.
+
 
 | Mechanic | What it does |
 |---|---|
@@ -303,7 +307,7 @@ src/
   game/rng.ts         deterministic mulberry32
   render/renderer.ts  canvas: tweening, particles, shake, the two meters
   render/palette.ts   the ink drawer: every colour the board paints, both themes
-  ui/                 attract, tutorial, leaderboard, podium, theme, agent API
+  ui/                 attract, tutorial + diagrams, leaderboard, podium, theme, agent API
   net/api.ts          worker client
 shared/
   replay.ts           action log encoding + authoritative replay
