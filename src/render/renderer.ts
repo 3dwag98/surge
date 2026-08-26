@@ -271,11 +271,12 @@ export class Renderer {
         y,
         text: combo > 1 ? `+${points} x${combo}` : `+${points}`,
         color: comboColor(combo, COMBO_MAX),
-        life: 720,
-        maxLife: 720,
+        life: 560,
+        maxLife: 560,
       });
-      // Never let a long chain bury the board under labels.
-      if (this.floaters.length > 6) this.floaters.splice(0, this.floaters.length - 6);
+      // Never let a long chain bury the board it is reporting on. A fast bot
+      // merges several times a second, and six labels at once is unreadable.
+      if (this.floaters.length > 4) this.floaters.splice(0, this.floaters.length - 4);
     }
     if (combo >= 4) this.addShake(Math.min(6, combo * 0.6));
   }

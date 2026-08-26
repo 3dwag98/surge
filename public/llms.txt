@@ -7,7 +7,8 @@
 
 Surge is playable by automated agents. `window.surge` is a synchronous control
 API on the page, and runs made through it post to the same leaderboard as human
-runs. Scores are never sent by the client — the server issues the run seed and
+runs. The page opens in attract mode, playing itself on an unticketed demo
+board; call `surge.newGame()` to claim a real run before playing. Scores are never sent by the client — the server issues the run seed and
 replays the submitted move log to derive the score itself.
 
 ## Docs

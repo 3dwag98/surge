@@ -98,10 +98,28 @@ nothing is not an error — it simply returns the unchanged state, which is why
 }
 ```
 
+### Attract mode
+
+The page opens playing itself — an unclaimed demo board on a local seed, with
+no run ticket behind it. Scores made there cannot be posted, on purpose: a
+visitor who only watches costs nothing.
+
+Your first `move()`, `vent()` or `newGame()` claims the cabinet and opens a real
+run. Opening it is a round trip, so that first call is spent on the claim rather
+than on the move. Start with `newGame()` and give it a moment:
+
+```js
+const s = window.surge;
+s.newGame();
+await new Promise((r) => setTimeout(r, 400)); // the run ticket is a round trip
+```
+
 ### A minimal bot
 
 ```js
 const s = window.surge;
+s.newGame();
+await new Promise((r) => setTimeout(r, 400));
 
 // Prefer down/left/right; only slide up when nothing else moves.
 const preference = ['down', 'left', 'right', 'up'];

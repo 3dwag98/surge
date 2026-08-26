@@ -1,7 +1,7 @@
 # SURGE
 
-A tile-merging arcade game where the floor keeps rising, wrapped in a pastel
-shell that comes in light and dark.
+A tile-merging arcade game where the floor keeps rising, in a risograph shell
+that comes in light and dark. It opens playing itself.
 
 Slide a 5x5 board and merge equal tiles. Unlike 2048, the board is under
 constant pressure: rows push in from the bottom on a timer that tightens as you
@@ -35,29 +35,62 @@ Beside the game sits the **podium**: the three best runs, one place per player,
 so a single hot streak cannot take all three. It is fed from the same response
 the table renders, so posting a run updates both without a second round trip.
 
+## Attract mode
+
+The page opens playing itself.
+
+An arcade cabinet does not sit on a title card — it plays until somebody puts a
+coin in — and for this game that is the honest thing to do rather than a
+flourish: `window.surge` exists so bots can play, so a bot demonstrating the
+game *is* the product. The demo runs on the real engine and the real renderer,
+but never on a server ticket, so a visitor who only watches costs no run and can
+post no score, and the demo cannot touch your personal best. The first key,
+click, touch or agent call claims the cabinet and opens a real run.
+
+`prefers-reduced-motion` gets no demo at all: the board is dealt and held still,
+with the same prompt over it. `src/ui/attract.ts` owns the loop; `src/main.ts`
+owns the three states a board can be in — `idle`, `attract`, `live` — and only a
+live run touches the action log, the personal best or the server.
+
 ## Look and theme
 
-The page and the game share one pastel palette in two themes.
+The direction is *candy shell, brutal machine*: the surface is soft, the game is
+not.
 
-Every colour the shell paints is a custom property on `:root` in
-`src/styles.css`, and dark mode redefines the tokens rather than restyling
-components — a rule written once is correct in both themes. `data-theme` on
-`<html>` is the switch: a blocking inline script in `index.html` applies the
-stored choice before first paint so a dark-mode visitor never sees a white
-flash, and `src/ui/theme.ts` owns it from there.
+**Colour is risograph.** A riso print makes a new colour by overprinting two
+inks, which is the move the game makes when two tiles fuse — so the tiles are
+inks and the ramp walks the ink drawer rather than a smooth colour wheel: aqua,
+blue, indigo, violet, orchid, fluorescent pink, red, orange, yellow. Hue is
+still derived from the exponent, so a 65536 tile is a natural continuation of a
+2. Two of those inks carry meaning rather than taste, and they mean the same
+thing everywhere they appear, page and board alike: **aqua is room, fluorescent
+pink is something about to happen to you.** A fine fixed grain over the page is
+the paper.
 
-The canvas cannot read CSS variables, so the board keeps its own copy of the
-palette in `src/render/palette.ts` and the theme controller swaps it at the same
-moment. Tile hue is derived from the exponent rather than picked off a list, so
-a 65536 tile is a natural continuation of a 2. The ramp climbs from sky blue
-through periwinkle, orchid and rose into peach — routed around the yellow-green
-stretch, which is the one part of the wheel that does not survive being made
-pastel. Tiles stay pale in both themes, so one dark ink is readable on every
-step of the ramp.
+**Type is compressed**, because the game is about being squeezed against a
+ceiling. The display face is Archivo on its width axis, and the masthead's
+second line is set narrower than its first. Body copy is Figtree; every number,
+label and key is DM Mono, because scores are data. The type scale doubles and is
+named for the tile it doubles like — `--t2` through `--t64`.
 
-A visitor who has never touched the toggle follows their system setting and
-keeps following it. The moment they pick a side it is stored, and system changes
-stop moving the page under them.
+**Structure encodes the content.** The four mechanics are not steps, so they are
+not numbered 01/02/03; each is labelled with the engine constant that governs it
+(`9.0s → 2.6s`, `Row 1`, `2.6s · 9× cap`, `1 per rise`). The high score table
+*is* ranked, so there rank is set like a result. The page has one measure —
+`--measure` in `src/styles.css` — so the masthead rule, the board, the scores
+rule and the colophon all begin and end together.
+
+The one deliberate imprecision is the wordmark: three ink plates a hair out of
+register, multiplied in light and screened in dark.
+
+Everything else is tokens. Dark mode redefines them rather than restyling
+components, so a rule written once is correct in both. `data-theme` on `<html>`
+is the switch: a blocking inline script in `index.html` applies the stored
+choice before first paint so a dark-mode visitor never sees a white flash, and
+`src/ui/theme.ts` owns it after that. The canvas cannot read CSS variables, so
+`src/render/palette.ts` keeps its own copy and is swapped at the same moment. A
+visitor who has never touched the toggle follows their system setting and keeps
+following it; the moment they pick a side it is stored.
 
 ## Running it locally
 
@@ -157,12 +190,12 @@ wrangler.toml         Worker, assets and D1 bindings
 migrations/           D1 schema (0003 drops the retired paid board)
 src/
   main.ts             run lifecycle, input, frame loop
-  styles.css          pastel tokens, light and dark
+  styles.css          riso tokens and one shared measure, light and dark
   game/engine.ts      all the rules — no DOM, injected time, seeded RNG
   game/rng.ts         deterministic mulberry32
   render/renderer.ts  canvas: tweening, particles, shake, pressure bar
-  render/palette.ts   every colour the board paints, in both themes
-  ui/                 tutorial, leaderboard, podium, theme, agent API
+  render/palette.ts   the ink drawer: every colour the board paints, both themes
+  ui/                 attract, tutorial, leaderboard, podium, theme, agent API
   net/api.ts          worker client
 shared/
   replay.ts           action log encoding + authoritative replay
@@ -185,8 +218,9 @@ were gone would land in the first frame back and bury you before you could move.
 The action log is timed off the same paused clock, so the server replay still
 agrees with what the player saw.
 
-`prefers-reduced-motion` disables tweening, particles and shake, and snaps tiles
-into place instead. `prefers-color-scheme` picks the theme for anyone who has
-not chosen one. Keyboard play is full (arrows, WASD, HJKL, Space to vent) and
+`prefers-reduced-motion` disables tweening, particles and shake, snaps tiles into
+place, and turns off attract mode entirely — the board is dealt and held still
+rather than playing itself. `prefers-color-scheme` picks the theme for anyone
+who has not chosen one. Keyboard play is full (arrows, WASD, HJKL, Space to vent) and
 typing in any input never moves the board. Player-supplied text is always
 rendered through `textContent`, never `innerHTML`.

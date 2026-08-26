@@ -15,6 +15,8 @@ export interface LeaderboardElements {
 export class LeaderboardView {
   private rows: ScoreRow[] = [];
   private highlightId: string | null = null;
+  /** Distinguishes "nobody has played" from "we could not ask". */
+  private offline = false;
 
   constructor(private els: LeaderboardElements) {}
 
@@ -29,12 +31,15 @@ export class LeaderboardView {
   async refresh(): Promise<ScoreRow[]> {
     try {
       const { scores, podium } = await api.scores();
+      this.offline = false;
       this.rows = scores;
       this.render();
       this.els.status.textContent = '';
       return podium;
     } catch {
-      this.els.status.textContent = 'Scores are offline right now.';
+      this.offline = true;
+      this.render();
+      this.els.status.textContent = 'The board did not load. Refresh to try again.';
       return [];
     }
   }
@@ -68,7 +73,7 @@ export class LeaderboardView {
 
     this.els.body.replaceChildren(...rows);
     this.els.table.hidden = rows.length === 0;
-    this.els.empty.hidden = rows.length > 0;
+    this.els.empty.hidden = rows.length > 0 || this.offline;
   }
 }
 

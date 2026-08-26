@@ -1,14 +1,19 @@
 /**
  * Surge — the shell.
  *
- * A pastel page in two themes. Every colour is a token on :root, and dark mode
- * redefines the tokens rather than restyling components, so a rule written once
- * is correct in both. `data-theme` on <html> is the switch — set before first
- * paint by the inline script in index.html and owned after that by
- * src/ui/theme.ts.
+ * Direction: candy shell, brutal machine. The surface is risograph — chalky
+ * inks on paper, one deliberate misregistration in the wordmark, a fine grain
+ * over everything — while the type is a compressed industrial grotesque, because
+ * the game is about being squeezed against a ceiling. Soft colour, hard edges.
  *
- * The canvas cannot read these variables, so the board's own colours live in
- * src/render/palette.ts and are swapped from the same place.
+ * Two inks carry meaning rather than taste, and they mean what they mean on the
+ * board: aqua is room, fluorescent pink is something about to happen to you.
+ *
+ * Every colour is a token on :root and dark mode redefines the tokens rather
+ * than restyling components, so a rule written once is correct in both.
+ * `data-theme` on <html> is the switch — set before first paint by the inline
+ * script in index.html, owned after that by src/ui/theme.ts. The canvas cannot
+ * read these variables, so the board keeps its own copy in render/palette.ts.
  */
 
 /* ------------------------------------------------------------------ tokens */
@@ -16,80 +21,89 @@
 :root {
   color-scheme: light;
 
-  --paper: #f7f4fb;
-  --paper-tint: #efeafa;
-  --card: #ffffff;
+  /* Paper: a cool bone stock, not a warm cream. */
+  --paper: #eff1ec;
+  --paper-2: #f7f8f5;
+  --sheet: #ffffff;
 
-  --accent: #8b7ae8; /* lavender */
-  --accent-deep: #6a56d1;
-  --accent-soft: #efeafd;
+  /* Riso inks. */
+  --aqua: #3fbfa6;
+  --aqua-deep: #21867a;
+  --aqua-wash: #dff2ee;
+  --pink: #ff5fa2;
+  --pink-deep: #d02f75;
+  --pink-wash: #ffe4ef;
+  --blue: #6d7bf0;
+  --yellow: #ffc24b;
+  --yellow-wash: #fdf0d6;
 
-  --mint: #7fceb2;
-  --mint-soft: #e4f6ee;
-  --rose: #ef94b4;
-  --rose-soft: #fdeaf1;
-  --butter-soft: #fdf3e0;
+  --ink: #22212b;
+  --ink-2: #4f4d5e;
+  --ink-3: #82808f;
 
-  --ink: #2b2540;
-  --ink-soft: #4d4569;
-  --muted: #6f6790;
-  --faint: #9a93b5;
+  --rule: #dcded7;
+  --rule-strong: #c3c6bd;
 
-  --line: #ece7f6;
-  --line-strong: #ddd5ee;
+  /* Behind the board, and the wash over it while a card is up. */
+  --panel: #e6e9e2;
+  --scrim: rgb(239 241 236 / 0.82);
 
-  /* The surround the board sits in. */
-  --panel: #efeafa;
-  --panel-line: #ddd5ee;
-  /* The wash over the board while an overlay is up. */
-  --scrim: rgb(239 234 250 / 0.86);
+  --grain: 0.34;
 
-  --radius-lg: 20px;
-  --radius: 14px;
-  --radius-sm: 10px;
+  --display: 'Archivo', 'Segoe UI', system-ui, sans-serif;
+  --body: 'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --data: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --shadow-sm: 0 1px 2px rgb(43 37 64 / 0.06);
-  --shadow: 0 8px 24px -10px rgb(43 37 64 / 0.16);
-  --shadow-lg: 0 24px 56px -22px rgb(43 37 64 / 0.3);
+  /*
+   * The type scale doubles, and is named for the tile it doubles like. A game
+   * about merging powers of two should not be measured in arbitrary rems.
+   */
+  --t2: 0.6875rem;
+  --t4: 0.8125rem;
+  --t8: 0.9375rem;
+  --t16: 1.125rem;
+  --t32: 1.75rem;
+  --t64: 3rem;
 
-  --sans:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /*
+   * The page has one measure. The board column sets it, and the masthead rule,
+   * the scores rule and the colophon all take their width from the same sum, so
+   * every horizontal line on the page starts and ends together.
+   */
+  --board-col: 500px;
+  --side-col: 284px;
+  --cabinet-gap: clamp(14px, 2.2vw, 26px);
+  --measure: calc(var(--board-col) + var(--cabinet-gap) + var(--side-col));
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #16151f;
-  --paper-tint: #1c1a28;
-  --card: #1f1d2c;
+  --paper: #131219;
+  --paper-2: #191821;
+  --sheet: #1e1d28;
 
-  --accent: #b8a9f0;
-  --accent-deep: #d0c5ff;
-  --accent-soft: #2a2540;
+  --aqua: #63d6bd;
+  --aqua-deep: #8fe6dc;
+  --aqua-wash: #17302e;
+  --pink: #ff78b0;
+  --pink-deep: #ffa1c8;
+  --pink-wash: #331d29;
+  --blue: #98a2ff;
+  --yellow: #ffd07a;
+  --yellow-wash: #322914;
 
-  --mint: #8fdcbe;
-  --mint-soft: #1e3230;
-  --rose: #f2a5c0;
-  --rose-soft: #33222c;
-  --butter-soft: #322a1f;
+  --ink: #f0eff5;
+  --ink-2: #b9b6c6;
+  --ink-3: #837f92;
 
-  --ink: #efebfa;
-  --ink-soft: #cbc4e0;
-  --muted: #9e97b8;
-  --faint: #7d7699;
+  --rule: #2b2936;
+  --rule-strong: #3d3a4c;
 
-  --line: #2b2839;
-  --line-strong: #3b3652;
+  --panel: #191821;
+  --scrim: rgb(19 18 25 / 0.84);
 
-  --panel: #1a1826;
-  --panel-line: #2f2b41;
-  --scrim: rgb(22 21 31 / 0.86);
-
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
-  --shadow: 0 8px 24px -10px rgb(0 0 0 / 0.5);
-  --shadow-lg: 0 24px 56px -22px rgb(0 0 0 / 0.7);
+  --grain: 0.22;
 }
 
 /* -------------------------------------------------------------- structure */
@@ -102,30 +116,44 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 84px;
+  scroll-padding-top: 76px;
 }
 
 body {
+  position: relative;
   margin: 0;
-  /* Two faint pastel pools behind the page, so the flat paper has some depth. */
-  background:
-    radial-gradient(60rem 32rem at 12% -8%, var(--accent-soft), transparent 60%),
-    radial-gradient(50rem 28rem at 92% 4%, var(--mint-soft), transparent 62%), var(--paper);
-  background-attachment: fixed;
+  background: var(--paper);
   color: var(--ink);
-  font-family: var(--sans);
-  font-size: 15px;
+  font-family: var(--body);
+  font-size: var(--t8);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+}
+
+/*
+ * Paper grain. A riso print is never flat, and a single fixed noise layer is
+ * the cheapest honest way to say so. It sits above the page and takes no
+ * pointer events, so nothing below it changes behaviour.
+ */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+:root[data-theme='dark'] body::after {
+  mix-blend-mode: screen;
 }
 
 h1,
-h2,
-h3 {
+h2 {
   margin: 0;
-  letter-spacing: -0.022em;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 p {
@@ -150,9 +178,21 @@ a {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--aqua-deep);
   outline-offset: 2px;
-  border-radius: 4px;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  border: 1px solid var(--rule-strong);
+  background: var(--sheet);
+  color: var(--ink-2);
+  font-family: var(--data);
+  font-size: var(--t2);
+  line-height: 1.35;
+  text-align: center;
 }
 
 /* --------------------------------------------------------------- buttons */
@@ -162,24 +202,24 @@ a {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 18px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
+  padding: 10px 18px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--sheet);
   color: var(--ink);
   font: inherit;
-  font-weight: 600;
-  font-size: 0.875rem;
+  font-family: var(--data);
+  font-size: var(--t4);
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition:
-    background-color 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    transform 0.1s ease;
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
 }
 
-.btn:active {
-  transform: translateY(1px);
+.btn:hover:not(:disabled) {
+  border-color: var(--ink-3);
 }
 
 .btn:disabled {
@@ -187,56 +227,51 @@ a {
   opacity: 0.45;
 }
 
-.btn-primary {
-  background: var(--accent);
-  color: #ffffff;
-  box-shadow: var(--shadow-sm);
+.btn-solid {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
 }
 
-:root[data-theme='dark'] .btn-primary {
-  /* The lavender is light in dark mode, so the label has to invert with it. */
-  color: #241f38;
+.btn-solid:hover:not(:disabled) {
+  border-color: var(--aqua-deep);
+  background: var(--aqua-deep);
+  color: var(--paper);
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-deep);
+:root[data-theme='dark'] .btn-solid:hover:not(:disabled) {
+  color: #14131b;
 }
 
-:root[data-theme='dark'] .btn-primary:hover:not(:disabled) {
-  color: #1c1830;
+/* Small utility control in the rail. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    color 0.14s ease;
 }
 
-.btn-ghost {
-  border-color: var(--line-strong);
-  background: var(--card);
-  color: var(--ink-soft);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  border-color: var(--accent);
+.chip:hover {
+  border-color: var(--aqua);
   color: var(--ink);
 }
 
-.btn-lg {
-  padding: 13px 30px;
-  font-size: 0.95rem;
-}
-
-/* The theme switch: one button, showing whichever side you are heading for. */
-.btn-icon {
-  width: 36px;
-  height: 36px;
+.chip-icon {
+  width: 30px;
   padding: 0;
-  border-color: var(--line-strong);
-  background: var(--card);
-  color: var(--ink-soft);
-  font-size: 0.95rem;
-  line-height: 1;
-}
-
-.btn-icon:hover {
-  border-color: var(--accent);
-  color: var(--accent-deep);
+  font-size: var(--t4);
 }
 
 .theme-icon-moon {
@@ -251,358 +286,250 @@ a {
   display: inline;
 }
 
-kbd {
-  display: inline-block;
-  min-width: 20px;
-  padding: 1px 5px;
-  border: 1px solid var(--line-strong);
-  border-bottom-width: 2px;
-  border-radius: 5px;
-  background: var(--card);
-  color: var(--ink-soft);
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  text-align: center;
-}
+/* ------------------------------------------------------------------ rail */
 
-/* ---------------------------------------------------------------- topbar */
-
-.topbar {
+.rail {
   position: sticky;
   top: 0;
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px clamp(16px, 4vw, 40px);
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
+  gap: 8px;
+  padding: 11px clamp(14px, 4vw, 34px);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
 }
 
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
+/*
+ * The wordmark is a three-pass riso print: aqua, then pink, then the ink plate,
+ * each a hair out of register. It is the one place the page is allowed to be
+ * imprecise on purpose.
+ */
+.wordmark {
+  position: relative;
   margin-right: auto;
-  font-weight: 800;
-  font-size: 1.02rem;
-  letter-spacing: -0.03em;
+  font-family: var(--display);
+  font-variation-settings: 'wdth' 70;
+  font-weight: 900;
+  font-size: var(--t32);
+  letter-spacing: 0.005em;
+  text-transform: lowercase;
+  line-height: 1;
 }
 
-.brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  background: linear-gradient(150deg, var(--accent), var(--rose) 55%, var(--mint));
-  box-shadow: inset 0 -2px 5px rgb(0 0 0 / 0.12);
+.wordmark-ink {
+  display: block;
 }
 
-.topnav {
+.wordmark-aqua,
+.wordmark-pink {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: multiply;
+}
+
+:root[data-theme='dark'] .wordmark-aqua,
+:root[data-theme='dark'] .wordmark-pink {
+  mix-blend-mode: screen;
+}
+
+.wordmark-aqua {
+  color: var(--aqua);
+  transform: translate(-1px, 0.5px);
+}
+
+.wordmark-pink {
+  color: var(--pink);
+  transform: translate(1px, -0.5px);
+}
+
+.wordmark-top {
+  position: relative;
+  color: var(--ink);
+}
+
+.rail-nav {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin-right: 6px;
 }
 
-.topnav a {
-  padding: 7px 13px;
-  border-radius: 999px;
-  color: var(--ink-soft);
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition:
-    background-color 0.16s ease,
-    color 0.16s ease;
+.rail-nav a {
+  padding: 6px 11px;
+  color: var(--ink-2);
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.14s ease;
 }
 
-.topnav a:hover {
-  background: var(--accent-soft);
-  color: var(--accent-deep);
+.rail-nav a:hover {
+  color: var(--aqua-deep);
 }
 
-/* ------------------------------------------------------------------ hero */
+/* -------------------------------------------------------------- masthead */
 
-.hero {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: clamp(32px, 6vw, 62px) 20px clamp(22px, 4vw, 34px);
-  text-align: center;
-}
-
-.pulse {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 15px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--muted);
-  font-size: 0.8rem;
-  box-shadow: var(--shadow-sm);
-}
-
-.pulse strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.pulse-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--mint);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint) 30%, transparent);
-}
-
-.hero-title {
-  margin: 20px 0 14px;
-  font-size: clamp(2.1rem, 6.4vw, 3.5rem);
-  font-weight: 800;
-  letter-spacing: -0.045em;
-  line-height: 1.06;
-}
-
-.hero-title em {
-  font-style: normal;
-  background: linear-gradient(96deg, var(--accent), var(--rose));
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-}
-
-.hero-sub {
-  max-width: 56ch;
-  margin: 0 auto;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 24px;
-}
-
-/* ---------------------------------------------------------------- layout */
-
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 560px) 292px;
-  justify-content: center;
-  gap: clamp(16px, 2.4vw, 28px);
-  align-items: start;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 8px clamp(16px, 4vw, 40px) 40px;
-}
-
-/* ------------------------------------------------------------------ rail */
-
-.rail {
-  display: grid;
-  gap: 14px;
-}
-
-.rail-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-  padding: 18px;
-}
-
-.rail-head,
-.section-head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 14px;
-}
-
-.rail-head h2,
-.section-head h2 {
-  font-size: 1.02rem;
-}
-
-.rail-note {
-  color: var(--faint);
-  font-size: 0.775rem;
-  letter-spacing: 0.01em;
-}
-
-.rail-foot {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-  color: var(--faint);
-  font-size: 0.775rem;
-  line-height: 1.5;
-}
-
-.rail-empty,
-.rail-status {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.rail-status:empty,
-.rail-empty[hidden] {
-  display: none;
-}
-
-/* ---------------------------------------------------------------- podium */
-
-.podium {
-  display: grid;
-  gap: 9px;
-}
-
-.podium:empty::after {
-  content: 'Nobody has posted a run yet. The top three land here.';
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.place {
+/*
+ * A masthead, not a hero. It sits inside the cabinet grid and stays short on
+ * purpose: the board is the argument, and the board has to be visible without
+ * scrolling.
+ */
+.marquee {
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  align-items: end;
+  gap: 8px clamp(16px, 3vw, 34px);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ink);
+}
+
+/*
+ * Compressed, heavy, set tight, and the second line is narrower than the
+ * first — the squeeze is in the type, not just the copy.
+ */
+.marquee-title {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(1.9rem, 4.8vw, 3.1rem);
+  line-height: 0.84;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+
+.marquee-line {
+  display: block;
+  font-variation-settings: 'wdth' 74;
+}
+
+.marquee-line-2 {
+  font-variation-settings: 'wdth' 63;
+  color: var(--pink);
+}
+
+.marquee-aside {
+  padding-bottom: 3px;
+}
+
+.marquee-sub {
+  max-width: 52ch;
+  color: var(--ink-2);
+  font-size: var(--t4);
+}
+
+.marquee-meta {
+  display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 2px 10px;
-  padding: 11px 13px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--paper-tint);
+  gap: 0 10px;
+  margin-top: 8px;
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-/* Gold, silver, bronze — pastel, and only as a tint. */
-.place[data-rank='1'] {
-  background: var(--butter-soft);
-  border-color: color-mix(in srgb, #e9c46a 40%, transparent);
+.marquee-meta b {
+  color: var(--ink);
+  font-weight: 500;
 }
 
-.place[data-rank='2'] {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+/*
+ * The separator belongs to the item that follows it, so a wrapped line reads
+ * as a continuation rather than leaving a rule stranded at the end of a row.
+ */
+.meta-cell + .meta-cell::before {
+  content: '·';
+  margin-right: 10px;
+  color: var(--rule-strong);
 }
 
-.place[data-rank='3'] {
-  background: var(--rose-soft);
-  border-color: color-mix(in srgb, var(--rose) 30%, transparent);
-}
+/* --------------------------------------------------------------- cabinet */
 
-.place-rank {
-  grid-row: 1 / span 2;
-  align-self: center;
-  min-width: 30px;
-  color: var(--ink-soft);
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.place-name {
-  font-weight: 650;
-  font-size: 0.92rem;
-  overflow-wrap: anywhere;
-}
-
-.place-score {
-  grid-column: 2;
-  color: var(--ink-soft);
-  font-family: var(--mono);
-  font-size: 0.78rem;
-}
-
-.place-meta {
-  grid-column: 2;
-  color: var(--faint);
-  font-size: 0.72rem;
-}
-
-/* ----------------------------------------------------------------- rules */
-
-.rules {
+.cabinet {
   display: grid;
-  gap: 12px;
-  margin: 0;
+  grid-template-columns: minmax(0, var(--board-col)) var(--side-col);
+  justify-content: center;
+  gap: var(--cabinet-gap);
+  align-items: start;
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: clamp(14px, 2.2vw, 24px) clamp(14px, 4vw, 34px) 48px;
 }
 
-.rule dt {
-  font-weight: 650;
-  font-size: 0.86rem;
-}
-
-.rule dd {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.5;
-}
-
-/* ----------------------------------------------------------------- stage */
-
-.stage {
+.screen {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
+
+/* ------------------------------------------------------------------- hud */
 
 .hud {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  border: 1px solid var(--rule-strong);
+  background: var(--sheet);
 }
 
 .stat {
   position: relative;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--card);
+  padding: 8px 12px;
+  border-right: 1px solid var(--rule);
   overflow: hidden;
+}
+
+.stat:last-child {
+  border-right: 0;
 }
 
 .stat-label {
   display: block;
-  color: var(--faint);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .stat-value {
   display: block;
-  font-family: var(--mono);
-  font-size: 1.12rem;
+  font-family: var(--display);
+  font-variation-settings: 'wdth' 82;
+  font-weight: 700;
+  font-size: var(--t16);
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
 }
 
-/* The combo tile drains a bar as its window closes. */
+/* The combo cell drains a bar as its window closes. */
 .stat-combo::after {
   content: '';
   position: absolute;
   inset: auto 0 0 0;
-  height: 3px;
-  background: var(--accent);
+  height: 2px;
+  background: var(--pink);
   transform: scaleX(var(--combo-fill, 0));
   transform-origin: left;
   transition: transform 0.12s linear;
 }
 
 .stat-combo .stat-value.is-hot {
-  color: var(--accent-deep);
+  color: var(--pink-deep);
 }
 
+/* ----------------------------------------------------------------- board */
+
+/*
+ * The one other place misregistration is allowed: two ink plates offset behind
+ * the screen. Everything else on the page sits on a single hairline.
+ */
 .board-wrap {
   position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  border: 1px solid var(--ink);
   background: var(--panel);
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--panel-line);
 }
 
 #board {
@@ -612,44 +539,70 @@ kbd {
   touch-action: none;
 }
 
-.controls {
+/* ----------------------------------------------------------------- deck */
+
+.deck {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.btn-vent {
+.vent {
   position: relative;
-  flex: 1 1 190px;
-  border: 1px solid var(--line-strong);
-  background: var(--card);
-  color: var(--muted);
+  flex: 1 1 180px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t4);
+  letter-spacing: 0.02em;
+  cursor: pointer;
   overflow: hidden;
+  transition:
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.vent:disabled {
+  cursor: not-allowed;
 }
 
 .vent-fill {
   position: absolute;
   inset: 0 auto 0 0;
   width: 100%;
-  background: var(--mint-soft);
+  background: var(--aqua-wash);
   transform: scaleX(var(--charge, 0));
   transform-origin: left;
   transition: transform 0.14s linear;
 }
 
-.vent-label {
+.vent-label,
+.vent kbd {
   position: relative;
 }
 
-.btn-vent.is-ready {
-  border-color: var(--mint);
+.vent.is-ready {
+  border-color: var(--aqua);
   color: var(--ink);
 }
 
-.controls-hint {
-  color: var(--faint);
-  font-size: 0.78rem;
+.deck-hint {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t2);
+}
+
+.deck-hint kbd {
+  margin-left: 2px;
 }
 
 .hint-touch {
@@ -665,18 +618,74 @@ kbd {
   }
 }
 
+/* --------------------------------------------------------- attract mode */
+
+/*
+ * The cabinet plays itself until someone takes it. The board stays fully
+ * visible — the demo is the argument — so this is a prompt, not a curtain.
+ */
+.attract {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  align-content: space-between;
+  justify-items: center;
+  padding: 10px;
+  background: linear-gradient(to top, var(--scrim) 0%, transparent 32%);
+  cursor: pointer;
+}
+
+.attract[hidden] {
+  display: none;
+}
+
+.attract-tag {
+  justify-self: start;
+  padding: 3px 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.attract-cta {
+  padding: 11px 22px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink);
+  font-family: var(--data);
+  font-size: var(--t4);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  animation: coin 2.4s ease-in-out infinite;
+}
+
+@keyframes coin {
+  0%,
+  100% {
+    box-shadow: 2px 2px 0 var(--aqua);
+  }
+  50% {
+    box-shadow: 2px 2px 0 var(--pink);
+  }
+}
+
 /* --------------------------------------------------- overlay + tutorial */
 
 .overlay,
 .tutorial {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 6;
   display: grid;
   place-items: center;
-  padding: 22px;
+  padding: 20px;
   background: var(--scrim);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(5px);
 }
 
 .overlay[hidden],
@@ -686,69 +695,83 @@ kbd {
 
 .overlay-card,
 .tutorial-card {
-  width: min(100%, 350px);
-  padding: 22px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--card);
-  box-shadow: var(--shadow-lg);
+  width: min(100%, 344px);
+  padding: 20px;
+  border: 1px solid var(--ink);
+  background: var(--sheet);
   text-align: center;
 }
 
 .overlay-card h2,
 .tutorial-title {
-  font-size: 1.4rem;
-  letter-spacing: -0.035em;
+  font-family: var(--display);
+  font-variation-settings: 'wdth' 72;
+  font-weight: 900;
+  font-size: var(--t32);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.overlay-card h2 {
+  color: var(--pink);
 }
 
 .overlay-stats {
-  margin: 6px 0 16px;
-  color: var(--muted);
-  font-size: 0.86rem;
+  margin: 8px 0 16px;
+  color: var(--ink-2);
+  font-family: var(--data);
+  font-size: var(--t4);
 }
 
 .save-form {
   display: grid;
-  gap: 7px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 12px;
   text-align: left;
 }
 
 .save-form label {
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-  font-weight: 600;
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
+/* The card is only as wide as the board, which shrinks on short screens, so
+   the button drops under the field rather than squeezing it to nothing. */
 .save-row {
   display: flex;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.save-row input {
-  flex: 1;
-  min-width: 0;
+.save-row .btn {
+  flex: 1 1 auto;
 }
 
 .save-form input {
-  padding: 10px 13px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--paper-tint);
+  flex: 2 1 116px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--paper-2);
   color: inherit;
-  font: inherit;
-  font-size: 0.9rem;
+  font-family: var(--data);
+  font-size: var(--t4);
 }
 
 .save-form input:focus {
   outline: none;
-  border-color: var(--accent);
-  background: var(--card);
+  border-color: var(--aqua);
+  background: var(--sheet);
 }
 
 .save-status {
-  color: var(--muted);
-  font-size: 0.8rem;
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t2);
 }
 
 .save-status:empty {
@@ -756,44 +779,43 @@ kbd {
 }
 
 .save-status.is-error {
-  color: var(--rose);
+  color: var(--pink-deep);
 }
 
 .tutorial-body {
   margin: 8px 0 14px;
-  color: var(--ink-soft);
-  font-size: 0.9rem;
+  color: var(--ink-2);
+  font-size: var(--t4);
+  text-align: left;
 }
 
 .tutorial-progress {
   display: flex;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   margin-bottom: 14px;
 }
 
 .tutorial-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--line-strong);
+  width: 14px;
+  height: 3px;
+  background: var(--rule-strong);
   transition: background-color 0.2s ease;
 }
 
 .tutorial-dot.is-done {
-  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--aqua);
 }
 
 .tutorial-dot.is-current {
-  background: var(--accent);
-  transform: scale(1.25);
+  background: var(--pink);
 }
 
 .tutorial-keys {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   margin-bottom: 14px;
 }
 
@@ -804,33 +826,177 @@ kbd {
 .tutorial-actions {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-/* ----------------------------------------------------------- high scores */
+/* ------------------------------------------------------------ side rail */
+
+.side {
+  display: grid;
+  gap: 14px;
+}
+
+.panel {
+  padding: 16px;
+  border: 1px solid var(--rule);
+  background: var(--sheet);
+}
+
+.panel-title {
+  margin-bottom: 12px;
+  font-family: var(--data);
+  font-size: var(--t2);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* ---------------------------------------------------------------- podium */
+
+.podium {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+}
+
+.podium:empty::after {
+  content: 'Nobody has posted a run yet.';
+  padding: 4px 0;
+  background: var(--sheet);
+  color: var(--ink-3);
+  font-size: var(--t4);
+}
+
+.place {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 1px 10px;
+  padding: 9px 10px;
+  background: var(--sheet);
+}
+
+/* One ink per place. No medals — the ink is the rank. */
+.place[data-rank='1'] {
+  background: var(--yellow-wash);
+}
+
+.place[data-rank='2'] {
+  background: var(--aqua-wash);
+}
+
+.place[data-rank='3'] {
+  background: var(--pink-wash);
+}
+
+.place-rank {
+  grid-row: 1 / span 3;
+  align-self: center;
+  color: var(--ink-2);
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.place-name {
+  font-weight: 600;
+  font-size: var(--t8);
+  overflow-wrap: anywhere;
+}
+
+.place-score {
+  grid-column: 2;
+  font-family: var(--display);
+  font-variation-settings: 'wdth' 82;
+  font-weight: 700;
+  font-size: var(--t16);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.place-meta {
+  grid-column: 2;
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t2);
+}
+
+/* --------------------------------------------------------------- systems */
+
+.systems {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.system {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 10px;
+}
+
+.system dt {
+  font-weight: 600;
+  font-size: var(--t4);
+}
+
+/* The number that governs the rule sits opposite its name, like a spec sheet. */
+.system-value {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  color: var(--aqua-deep);
+  font-family: var(--data);
+  font-size: var(--t2);
+  white-space: nowrap;
+}
+
+.system-note {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  color: var(--ink-3);
+  font-size: var(--t4);
+  line-height: 1.45;
+}
+
+/* ---------------------------------------------------------------- scores */
 
 .scores {
-  max-width: 1200px;
+  max-width: var(--measure);
   margin: 0 auto;
-  padding: 0 clamp(16px, 4vw, 40px) 44px;
+  padding: 0 clamp(14px, 4vw, 34px) 40px;
 }
 
-.section-head {
-  flex-direction: row;
+.scores-head {
+  display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ink);
 }
 
-/* A narrow phone scrolls the table rather than the whole page sideways. */
+.scores-head .panel-title {
+  margin-bottom: 0;
+}
+
+.scores-note {
+  color: var(--ink-3);
+  font-size: var(--t4);
+}
+
 .table-scroll {
   overflow-x: auto;
 }
 
 .leaderboard {
   width: 100%;
-  min-width: 460px;
+  min-width: 520px;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: var(--t4);
 }
 
 .leaderboard[hidden] {
@@ -838,29 +1004,28 @@ kbd {
 }
 
 .leaderboard th {
-  padding: 0 10px 8px;
-  border-bottom: 1px solid var(--line-strong);
-  color: var(--faint);
-  font-size: 0.68rem;
-  font-weight: 600;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-size: var(--t2);
+  font-weight: 400;
   letter-spacing: 0.09em;
   text-align: left;
   text-transform: uppercase;
 }
 
 .leaderboard td {
-  padding: 10px;
-  border-bottom: 1px solid var(--line);
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--rule);
 }
 
-.leaderboard tr:last-child td {
-  border-bottom: 0;
-}
-
+/* Rank is the point of a high score table, so it is set like a result. */
 .col-rank {
-  width: 46px;
-  color: var(--faint);
-  font-family: var(--mono);
+  width: 68px;
+  color: var(--ink-3);
+  font-family: var(--data);
+  font-variant-numeric: tabular-nums;
 }
 
 .col-name {
@@ -868,67 +1033,128 @@ kbd {
   overflow-wrap: anywhere;
 }
 
-.col-score,
-.col-level {
-  font-family: var(--mono);
+.col-score {
+  font-family: var(--display);
+  font-variation-settings: 'wdth' 82;
+  font-weight: 700;
+  font-size: var(--t16);
   font-variant-numeric: tabular-nums;
 }
 
+.col-level,
 .col-when {
-  color: var(--faint);
-  white-space: nowrap;
+  font-family: var(--data);
+  color: var(--ink-2);
 }
 
-.leaderboard tr.is-leader td {
-  background: var(--butter-soft);
+.col-when {
+  white-space: nowrap;
+  color: var(--ink-3);
 }
 
 .leaderboard tr.is-leader .col-rank {
-  color: var(--ink-soft);
-  font-weight: 700;
+  color: var(--ink);
+}
+
+.leaderboard tr.is-leader .col-score {
+  color: var(--pink-deep);
 }
 
 .leaderboard tr.is-mine td {
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--aqua-wash);
 }
 
 .tile-chip {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-deep);
-  font-family: var(--mono);
-  font-size: 0.72rem;
+  padding: 1px 8px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-2);
+  font-family: var(--data);
+  font-size: var(--t2);
+}
+
+.empty {
+  padding-top: 14px;
+  color: var(--ink-3);
+  font-size: var(--t4);
+}
+
+.empty[hidden],
+.empty:empty {
+  display: none;
 }
 
 /* -------------------------------------------------------------- colophon */
 
 .colophon {
-  max-width: 660px;
+  max-width: var(--measure);
   margin: 0 auto;
-  padding: 0 20px 48px;
-  color: var(--faint);
-  font-size: 0.8rem;
-  line-height: 1.6;
-  text-align: center;
+  padding: 22px clamp(14px, 4vw, 34px) 48px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-3);
+  font-size: var(--t4);
+}
+
+.colophon p {
+  max-width: 62ch;
+}
+
+.colophon-links {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-family: var(--data);
+  font-size: var(--t2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.colophon-links a:hover {
+  color: var(--aqua-deep);
 }
 
 /* ------------------------------------------------------------ responsive */
 
-@media (max-width: 960px) {
-  .layout {
-    grid-template-columns: minmax(0, 560px);
+@media (max-width: 940px) {
+  /* One column: the measure collapses to the board alone. */
+  :root {
+    --measure: var(--board-col);
+  }
+
+  .cabinet {
+    grid-template-columns: minmax(0, var(--board-col));
+  }
+
+  .side {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
 }
 
-@media (max-width: 860px) {
-  .topnav {
+@media (max-width: 620px) {
+  .rail-nav {
     display: none;
+  }
+
+  .marquee {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
 
   .hud {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat:nth-child(2) {
+    border-right: 0;
+  }
+
+  .stat:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .deck-hint {
+    margin-left: 0;
   }
 }
 
@@ -945,5 +1171,9 @@ kbd {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+
+  .attract-cta {
+    box-shadow: 2px 2px 0 var(--aqua);
   }
 }

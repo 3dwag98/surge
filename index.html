@@ -3,21 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>SURGE — merge fast, the floor is rising</title>
+    <title>SURGE — the floor is rising</title>
     <meta
       name="description"
-      content="Surge is a tile-merging arcade game where the floor keeps rising. Chain merges for combo multipliers, vent to buy space, and post a verified score to the board. Free to play."
+      content="A merge game with a rising floor. Chain merges before the window closes, vent to buy room, and stay out of the top row. Free to play, scores verified server-side."
     />
-    <meta name="theme-color" content="#f7f4fb" id="theme-color" />
+    <meta name="theme-color" content="#eff1ec" id="theme-color" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=DM+Mono:wght@400;500&family=Figtree:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23b8a9f0'/><path d='M9 21l7-10 7 10z' fill='%23fdfbff'/></svg>"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%236fd9ce'/><rect x='4' y='18' width='24' height='10' fill='%23ff5fa2'/></svg>"
     />
 
     <!--
@@ -41,56 +41,56 @@
               : 'light';
         document.documentElement.dataset.theme = theme;
         if (theme === 'dark') {
-          document.querySelector('#theme-color')?.setAttribute('content', '#16151f');
+          document.querySelector('#theme-color')?.setAttribute('content', '#131219');
         }
       })();
     </script>
   </head>
   <body>
-    <!-- ---------------------------------------------------------- topbar -->
-    <header class="topbar">
-      <a class="brand" href="/">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">surge</span>
+    <!-- ------------------------------------------------------------- rail -->
+    <header class="rail">
+      <!-- Two ink layers, deliberately out of register. It is a riso wordmark. -->
+      <a class="wordmark" href="/" aria-label="Surge, home">
+        <span class="wordmark-ink wordmark-aqua" aria-hidden="true">surge</span>
+        <span class="wordmark-ink wordmark-pink" aria-hidden="true">surge</span>
+        <span class="wordmark-ink wordmark-top">surge</span>
       </a>
 
-      <nav class="topnav">
-        <a href="#play">Play</a>
-        <a href="#scores">High scores</a>
-        <a href="/agent.md" target="_blank" rel="noopener">Agent API</a>
+      <nav class="rail-nav">
+        <a href="#cabinet">Play</a>
+        <a href="#scores">Scores</a>
+        <a href="/agent.md" target="_blank" rel="noopener">Agents</a>
       </nav>
 
-      <button type="button" class="btn btn-icon" id="theme-toggle" aria-pressed="false">
+      <button type="button" class="chip chip-icon" id="theme-toggle" aria-pressed="false">
         <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
         <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
       </button>
-      <button type="button" class="btn btn-ghost" id="how-to">How to play</button>
+      <button type="button" class="chip" id="how-to">How to play</button>
     </header>
 
-    <!-- ------------------------------------------------------------ hero -->
-    <section class="hero">
-      <p class="pulse">
-        <span class="pulse-dot" aria-hidden="true"></span>
-        <strong id="scores-count">0</strong> runs posted · free to play, verified server-side
-      </p>
+    <!-- --------------------------------------------------------- cabinet -->
+    <main class="cabinet" id="cabinet">
+      <!-- ------------------------------------------------------- masthead -->
+      <section class="marquee">
+        <h1 class="marquee-title">
+          <span class="marquee-line">The floor</span>
+          <span class="marquee-line marquee-line-2">is rising</span>
+        </h1>
+        <div class="marquee-aside">
+          <p class="marquee-sub">
+            Merge equal tiles. Rows shove in from below, faster every level. Anything left in the
+            top row is crushed.
+          </p>
+          <p class="marquee-meta">
+            <span class="meta-cell"><b id="scores-count">0</b> runs posted</span>
+            <span class="meta-cell">verified server-side</span>
+            <span class="meta-cell">bots welcome</span>
+          </p>
+        </div>
+      </section>
 
-      <h1 class="hero-title">Merge fast.<br />The floor is <em>rising</em>.</h1>
-
-      <p class="hero-sub">
-        Slide a 5×5 board and merge equal tiles. Rows shove in from below on a timer that keeps
-        tightening — anything caught in the top row is crushed. Chain merges to climb the combo
-        multiplier, and vent when the board gets tight.
-      </p>
-
-      <div class="hero-actions">
-        <a class="btn btn-primary btn-lg" href="#play">Play now</a>
-        <a class="btn btn-ghost btn-lg" href="#scores">See the scores</a>
-      </div>
-    </section>
-
-    <main class="layout">
-      <!-- ------------------------------------------------------- the game -->
-      <section class="stage" id="play" aria-label="Game">
+      <section class="screen" aria-label="Game">
         <div class="hud">
           <div class="stat">
             <span class="stat-label">Score</span>
@@ -113,6 +113,15 @@
         <div class="board-wrap">
           <canvas id="board" width="520" height="560" aria-label="Surge game board"></canvas>
 
+          <!-- ------------------------------------------------ attract mode -->
+          <div class="attract" id="attract" hidden>
+            <span class="attract-tag">Demo</span>
+            <button type="button" class="attract-cta" id="attract-start">
+              Press any key to play
+            </button>
+          </div>
+
+          <!-- -------------------------------------------------- game over -->
           <div class="overlay" id="overlay" hidden>
             <div
               class="overlay-card"
@@ -124,23 +133,23 @@
               <p class="overlay-stats" id="overlay-stats"></p>
 
               <form class="save-form" id="save-form" hidden>
-                <label for="player-name">Put it on the board</label>
+                <label for="player-name">Name</label>
                 <div class="save-row">
                   <input
                     type="text"
                     id="player-name"
                     name="name"
                     maxlength="18"
-                    placeholder="your handle"
+                    placeholder="anon"
                     autocomplete="nickname"
                     spellcheck="false"
                   />
-                  <button type="submit" class="btn btn-primary" id="save-score">Post</button>
+                  <button type="submit" class="btn btn-solid" id="save-score">Post score</button>
                 </div>
                 <p class="save-status" id="save-status" role="status"></p>
               </form>
 
-              <button type="button" class="btn btn-primary" id="play-again">Run it back</button>
+              <button type="button" class="btn btn-solid" id="play-again">Run it back</button>
             </div>
           </div>
 
@@ -152,22 +161,23 @@
               <p class="tutorial-body" id="tutorial-body"></p>
               <div class="tutorial-keys" id="tutorial-keys" hidden></div>
               <div class="tutorial-actions">
-                <button type="button" class="btn btn-ghost" id="tutorial-skip">Skip tutorial</button>
-                <button type="button" class="btn btn-primary" id="tutorial-next">Next</button>
+                <button type="button" class="btn" id="tutorial-skip">Skip</button>
+                <button type="button" class="btn btn-solid" id="tutorial-next">Next</button>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="controls">
-          <button type="button" class="btn btn-vent" id="vent" disabled>
+        <div class="deck">
+          <button type="button" class="vent" id="vent" disabled>
             <span class="vent-fill" aria-hidden="true"></span>
-            <span class="vent-label">Vent <kbd>Space</kbd></span>
+            <span class="vent-label">Vent</span>
+            <kbd>Space</kbd>
           </button>
-          <button type="button" class="btn btn-ghost" id="new-game">New run</button>
-          <p class="controls-hint">
+          <button type="button" class="btn" id="new-game">New run</button>
+          <p class="deck-hint">
             <span class="hint-desktop"
-              ><kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> or <kbd>WASD</kbd> to slide</span
+              ><kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> or <kbd>WASD</kbd></span
             >
             <span class="hint-touch">Swipe to slide</span>
           </p>
@@ -176,48 +186,49 @@
         <p class="visually-hidden" id="board-status" role="status" aria-live="polite"></p>
       </section>
 
-      <!-- ------------------------------------------------------- the rail -->
-      <aside class="rail">
-        <section class="rail-card" aria-labelledby="podium-title">
-          <header class="rail-head">
-            <h2 id="podium-title">Podium</h2>
-            <span class="rail-note">the three best runs</span>
-          </header>
+      <!-- ------------------------------------------------------- side rail -->
+      <aside class="side">
+        <section class="panel" aria-labelledby="podium-title">
+          <h2 class="panel-title" id="podium-title">Podium</h2>
           <div class="podium" id="podium"></div>
         </section>
 
-        <section class="rail-card" aria-labelledby="mechanics-title">
-          <header class="rail-head">
-            <h2 id="mechanics-title">The four rules</h2>
-            <span class="rail-note">everything the game does</span>
-          </header>
-          <dl class="rules">
-            <div class="rule">
+        <!--
+          Four systems, all running at once — so they are labelled by the
+          number that governs each one, not numbered 01/02/03 as if they were
+          steps. Every figure here is the engine's actual constant.
+        -->
+        <section class="panel" aria-labelledby="systems-title">
+          <h2 class="panel-title" id="systems-title">What is happening to you</h2>
+          <dl class="systems">
+            <div class="system">
               <dt>Rising floor</dt>
-              <dd>
-                A partial row shoves in from below and everything moves up. The gap between rises
-                shrinks with every level.
+              <dd class="system-value">9.0s → 2.6s</dd>
+              <dd class="system-note">
+                A row shoves in from below and everything moves up. The gap shrinks 8% every level.
               </dd>
             </div>
-            <div class="rule">
-              <dt>Top row kills</dt>
-              <dd>
-                Anything still in the top row when a row rises is crushed. That is the only way to
+            <div class="system">
+              <dt>The ceiling</dt>
+              <dd class="system-value">Row 1</dd>
+              <dd class="system-note">
+                Anything still in the top row when a row rises is crushed. It is the only way to
                 lose.
               </dd>
             </div>
-            <div class="rule">
+            <div class="system">
               <dt>Combo window</dt>
-              <dd>
-                Each merge opens a 2.6 s window. Merge again inside it and the multiplier climbs, up
-                to 9×.
+              <dd class="system-value">2.6s · 9× cap</dd>
+              <dd class="system-note">
+                Merge again before it closes and the multiplier climbs. Stall and it drops to 1×.
               </dd>
             </div>
-            <div class="rule">
+            <div class="system">
               <dt>Charge &amp; vent</dt>
-              <dd>
-                Merging charges the meter. Full, it blows out the bottom row — space, not time. One
-                vent per rise.
+              <dd class="system-value">1 per rise</dd>
+              <dd class="system-note">
+                A full meter blows out the bottom row. It buys space, not time — the timer keeps
+                running.
               </dd>
             </div>
           </dl>
@@ -225,43 +236,43 @@
       </aside>
     </main>
 
-    <!-- ------------------------------------------------------ high scores -->
-    <section class="scores" id="scores" aria-labelledby="leaderboard-title">
-      <header class="section-head">
-        <h2 id="leaderboard-title">High scores</h2>
-        <span class="rail-note">free to enter · verified server-side</span>
+    <!-- ---------------------------------------------------------- scores -->
+    <section class="scores" id="scores" aria-labelledby="scores-title">
+      <header class="scores-head">
+        <h2 class="panel-title" id="scores-title">High scores</h2>
+        <p class="scores-note">
+          Every row was produced by the server replaying that player's move log.
+        </p>
       </header>
 
       <div class="table-scroll">
         <table class="leaderboard" id="leaderboard-table" hidden>
           <thead>
             <tr>
-              <th scope="col" class="col-rank">#</th>
+              <th scope="col" class="col-rank">Rank</th>
               <th scope="col" class="col-name">Player</th>
               <th scope="col" class="col-score">Score</th>
               <th scope="col" class="col-level">Lvl</th>
-              <th scope="col" class="col-tile">Best</th>
-              <th scope="col" class="col-when">When</th>
+              <th scope="col" class="col-tile">Top tile</th>
+              <th scope="col" class="col-when">Posted</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body"></tbody>
         </table>
       </div>
 
-      <p class="rail-empty" id="leaderboard-empty">No runs posted yet. Be the first.</p>
-      <p class="rail-status" id="leaderboard-status" role="status"></p>
-
-      <p class="rail-foot">
-        Scores are replayed on the server from your move log before they count, so the number on the
-        board is one the engine actually produced.
-      </p>
+      <p class="empty" id="leaderboard-empty">No scores yet. Play a run and take the top.</p>
+      <p class="empty" id="leaderboard-status" role="status"></p>
     </section>
 
     <footer class="colophon">
       <p>
-        Merge equal tiles to double them. Every merge extends your combo window and charges the vent.
-        The floor rises on a timer that never stops tightening — anything left in the top row when it
-        does is gone.
+        Surge is free and always will be. The client never sends a score — it sends what it did, and
+        the server replays it.
+      </p>
+      <p class="colophon-links">
+        <a href="/agent.md">Agent API</a>
+        <a href="/llms.txt">llms.txt</a>
       </p>
     </footer>
 
