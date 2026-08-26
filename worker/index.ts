@@ -83,7 +83,10 @@ async function overBudget(limiter: RateLimit | undefined, key: string): Promise<
   try {
     const { success } = await limiter.limit({ key });
     return !success;
-  } catch {
+  } catch (error) {
+    // Failing open is deliberate, but doing it silently would hide a guard rail
+    // that has stopped guarding anything.
+    console.error('[worker] rate limiter unavailable', error);
     return false;
   }
 }

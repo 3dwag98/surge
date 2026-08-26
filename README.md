@@ -191,13 +191,30 @@ than a theoretical one: 100,000 Worker requests a day, and a daily row allowance
 on D1. A single script can spend either of those in minutes. Three things keep
 that from being a silent failure.
 
-**Rate limits, so a flood cannot spend the day's budget.** Two `ratelimits`
-bindings in `wrangler.toml` — 60 reads and 20 writes a minute, keyed on the
-caller's IP. Over budget gets `429` with a `Retry-After`. The limiter is a guard
-rail, not a dependency: if the binding is missing or throws, it fails open,
-because a limiter must never be the reason the game stops working. This replaced
-a `COUNT` over the `runs` table, which had the property of answering a flood of
-run requests by hammering the database it was supposed to be protecting.
+**Rate limits — a speed bump, not a wall.** Two `ratelimits` bindings in
+`wrangler.toml`, 60 reads and 20 writes a minute, keyed on the caller's IP. Over
+budget gets `429` with a `Retry-After`.
+
+Be clear about what this does buy, because it is less than it looks. The
+binding is [documented ↗](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
+as "permissive, eventually consistent, and intentionally designed to not be used
+as an accurate accounting system", with counters cached per machine and updated
+asynchronously. In practice that is not a figure of speech: `wrangler dev`
+simulates it exactly — 20 writes pass, the 21st is refused — while against the
+deployed Worker 160 requests from one IP over 100 seconds were all allowed,
+because they spread across machines that each saw a small count. It blunts a
+sustained single-source flood. It will not stop a burst, and nothing on
+workers.dev will; that needs WAF rate limiting rules, which need a custom
+domain.
+
+It still earns its place: it costs nothing, and it replaced a `COUNT` over the
+`runs` table, which answered a flood of run requests by hammering the database
+it was supposed to protect — spending the D1 allowance it was defending.
+
+**The client does not join in.** A client that retries through a rate limit is
+part of the storm. When the server answers `429` or `503` it also says how long
+to wait, and until that passes new runs start locally without touching the
+network at all.
 
 **Honest errors when the database runs out.** A D1 failure is not a bug in this
 Worker, and answering it with `internal error` tells a player nothing they can
@@ -207,6 +224,11 @@ can post today, and unreachable, which is worth retrying now. `GET
 /api/health?db=1` runs one query and reports `ok`, `over-limit` or
 `unavailable` — opt-in, because a monitor polling it every minute would spend
 the allowance it is watching.
+
+**This is not theoretical.** The D1 path was exercised in production while
+testing this: under a burst, one request came back
+`D1_ERROR: internal error`, and the handler answered it as a retryable `503`
+rather than `internal error`. That is the whole point of the split.
 
 **The game keeps working regardless.** None of this stops play: the engine needs
 no network, and a run without a server ticket is still a run. What changes is

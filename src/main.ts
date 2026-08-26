@@ -12,7 +12,7 @@ import { CHARGE_MAX, SurgeGame } from './game/engine.js';
 import { randomSeed } from './game/rng.js';
 import type { Direction, GameState } from './game/types.js';
 import { Renderer } from './render/renderer.js';
-import { api, apiMessage } from './net/api.js';
+import { api, apiMessage, ApiError } from './net/api.js';
 import { installAgentApi, type InstalledAgentApi } from './ui/agent.js';
 import { AttractMode } from './ui/attract.js';
 import { LeaderboardView, formatNumber } from './ui/leaderboard.js';
@@ -149,6 +149,14 @@ let claiming = false;
  * good run.
  */
 let ticketProblem: string | null = null;
+/**
+ * Wall-clock time before which we will not ask for another run ticket.
+ *
+ * A client that keeps retrying through a rate limit is part of the storm. When
+ * the server says 429 or 503 it also says how long to wait, and until then new
+ * runs start locally without touching the network at all.
+ */
+let ticketCooldownUntil = 0;
 
 /**
  * Time the run has actually been watchable, in milliseconds.
@@ -230,14 +238,25 @@ async function startRun(): Promise<void> {
   // is unreachable the game still plays, it just cannot post a score.
   let seed = randomSeed();
   let ticketId: string | null = null;
-  try {
-    const ticket = await api.startRun();
-    seed = ticket.seed;
-    ticketId = ticket.runId;
-    ticketProblem = null;
-  } catch (error) {
-    ticketId = null;
-    ticketProblem = apiMessage(error, 'The board is offline.');
+  const waitingOut = Math.ceil((ticketCooldownUntil - Date.now()) / 1000);
+
+  if (waitingOut > 0) {
+    // Still inside the window the server asked for. Do not send the request.
+    ticketProblem = `The board asked us to wait ${waitingOut}s before starting another run.`;
+  } else {
+    try {
+      const ticket = await api.startRun();
+      seed = ticket.seed;
+      ticketId = ticket.runId;
+      ticketProblem = null;
+      ticketCooldownUntil = 0;
+    } catch (error) {
+      ticketId = null;
+      ticketProblem = apiMessage(error, 'The board is offline.');
+      if (error instanceof ApiError && (error.status === 429 || error.status === 503)) {
+        ticketCooldownUntil = Date.now() + (error.retryAfter ?? 60) * 1000;
+      }
+    }
   }
 
   // Everything below is one step, taken only once the seed is settled. Flipping
